@@ -151,6 +151,30 @@ features are hand-crafted, the detector can only be as robust
 as the designer's assumptions about what visual evidence
 matters.
 
+% --- Figure: Traditional pre-deep-learning pipeline ---
+\begin{figure}[!t]
+\centering
+\scalebox{0.82}{%
+\begin{tikzpicture}[
+  node distance=0.3cm,
+  box/.style={draw, rounded corners=3pt, fill=blue!8,
+              font=\scriptsize, text width=1.5cm,
+              align=center, minimum height=0.72cm, inner sep=3pt},
+  arr/.style={->, >=Stealth, semithick}
+]
+  \node[box] (A) {Image Pyramid/ Sliding Win.};
+  \node[box, right=0.35cm of A] (B) {Hand-crafted Features (HOG/ Haar)};
+  \node[box, right=0.35cm of B] (C) {Classifier (SVM/ AdaBoost)};
+  \node[box, right=0.35cm of C] (D) {NMS};
+  \node[box, right=0.35cm of D] (E) {Detections};
+  \draw[arr] (A)--(B);
+  \draw[arr] (B)--(C);
+  \draw[arr] (C)--(D);
+  \draw[arr] (D)--(E);
+\end{tikzpicture}}
+\caption{\footnotesize Traditional pre-deep-learning detection pipeline.}
+\label{fig:trad-pipeline}
+\end{figure}
 
 \subsection{Viola--Jones: Real-Time Face Detection with Haar Features}
 
@@ -289,6 +313,37 @@ a smaller set of plausible object locations. In practice,
 two-stage designs became known for strong mAP, especially when
 precise localization is required, albeit often at a higher
 latency than single-stage alternatives.
+
+% --- Figure: Two-stage detector workflow ---
+\begin{figure}[!t]
+\centering
+\scalebox{0.90}{%
+\begin{tikzpicture}[
+  node distance=0.3cm,
+  box/.style={draw, rounded corners=3pt, fill=green!8,
+              font=\scriptsize, text width=1.5cm,
+              align=center, minimum height=0.72cm, inner sep=3pt},
+  arr/.style={->, >=Stealth, semithick}
+]
+  % Top row: left to right
+  \node[box] (img)  {Image};
+  \node[box, right=0.35cm of img]  (bb)   {Backbone};
+  \node[box, right=0.35cm of bb]   (feat) {Feature Map};
+  \node[box, right=0.35cm of feat] (rpn)  {RPN Props.};
+  % Bottom row: right to left (starting below rpn)
+  \node[box, below=0.45cm of rpn]  (roi)  {RoI Pool/ Align};
+  \node[box, left=0.35cm of roi]   (head) {Head (cls+reg)};
+  \node[box, left=0.35cm of head]  (det)  {Detections};
+  \draw[arr] (img)--(bb);
+  \draw[arr] (bb)--(feat);
+  \draw[arr] (feat)--(rpn);
+  \draw[arr] (rpn)--(roi);
+  \draw[arr] (roi)--(head);
+  \draw[arr] (head)--(det);
+\end{tikzpicture}}
+\caption{\footnotesize Two-stage detector workflow (e.g., Faster R-CNN).}
+\label{fig:two-stage}
+\end{figure}
 
 \subsubsection{R-CNN: Regions with CNN Features}
 
@@ -500,6 +555,31 @@ parallelism. The cost is that training becomes sensitive to
 class imbalance (many background locations) and that early
 designs struggled with precise localization for small or
 crowded objects.
+
+% --- Figure: One-stage detector workflow ---
+\begin{figure}[!t]
+\centering
+\scalebox{0.82}{%
+\begin{tikzpicture}[
+  node distance=0.3cm,
+  box/.style={draw, rounded corners=3pt, fill=orange!8,
+              font=\scriptsize, text width=1.5cm,
+              align=center, minimum height=0.72cm, inner sep=3pt},
+  arr/.style={->, >=Stealth, semithick}
+]
+  \node[box] (img)   {Image};
+  \node[box, right=0.35cm of img]   (bb)    {Backbone/ FPN};
+  \node[box, right=0.35cm of bb]    (heads) {Dense Heads};
+  \node[box, right=0.35cm of heads] (dec)   {Decode \& NMS};
+  \node[box, right=0.35cm of dec]   (det)   {Detections};
+  \draw[arr] (img)--(bb);
+  \draw[arr] (bb)--(heads);
+  \draw[arr] (heads)--(dec);
+  \draw[arr] (dec)--(det);
+\end{tikzpicture}}
+\caption{\footnotesize One-stage detector workflow (e.g., YOLO, SSD, RetinaNet).}
+\label{fig:one-stage}
+\end{figure}
 
 \subsection{YOLOv1: Unified Grid-Based Prediction}
 
@@ -737,6 +817,37 @@ pixel location, DETR produces a \emph{fixed-size} set of
 predictions. This small design choice has large consequences:
 it pushes instance selection into the learning problem and
 reduces reliance on post-processing heuristics.
+
+% --- Figure: DETR set prediction workflow ---
+\begin{figure}[!t]
+\centering
+\scalebox{0.90}{%
+\begin{tikzpicture}[
+  node distance=0.3cm,
+  box/.style={draw, rounded corners=3pt, fill=violet!8,
+              font=\scriptsize, text width=1.5cm,
+              align=center, minimum height=0.72cm, inner sep=3pt},
+  arr/.style={->, >=Stealth, semithick}
+]
+  % Top row: left to right
+  \node[box] (img)  {Image};
+  \node[box, right=0.35cm of img]  (bb)   {Backbone};
+  \node[box, right=0.35cm of bb]   (enc)  {Transformer Enc.};
+  \node[box, right=0.35cm of enc]  (dec)  {Decoder + Obj. Queries};
+  % Bottom row: right to left (starting below dec)
+  \node[box, below=0.45cm of dec]   (pred)   {Set Predictions};
+  \node[box, left=0.35cm of pred]   (hmatch) {Hungarian Matching};
+  \node[box, left=0.35cm of hmatch] (det)    {Detections (no NMS)};
+  \draw[arr] (img)--(bb);
+  \draw[arr] (bb)--(enc);
+  \draw[arr] (enc)--(dec);
+  \draw[arr] (dec)--(pred);
+  \draw[arr] (pred)--(hmatch);
+  \draw[arr] (hmatch)--(det);
+\end{tikzpicture}}
+\caption{\footnotesize DETR set prediction workflow (no NMS at inference).}
+\label{fig:detr}
+\end{figure}
 
 \subsection{Bipartite Matching and Direct Set Prediction}
 
