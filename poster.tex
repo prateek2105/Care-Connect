@@ -1,0 +1,334 @@
+\documentclass[10pt]{article}
+
+% ================================================================
+% Page geometry  –  A4 portrait with tight but readable margins
+% ================================================================
+\usepackage[a4paper,portrait,top=11mm,bottom=11mm,left=12mm,right=12mm]{geometry}
+
+% ================================================================
+% Typography
+% ================================================================
+\usepackage{times}
+\usepackage{microtype}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+
+% ================================================================
+% Two-column layout  (multicol gives balanced columns automatically)
+% ================================================================
+\usepackage{multicol}
+\setlength{\columnsep}{7mm}
+\setlength{\columnseprule}{0.3pt}
+\setlength{\multicolsep}{3pt}
+
+% ================================================================
+% Lists
+% ================================================================
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=1.1em,noitemsep,topsep=1pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=1.3em,noitemsep,topsep=1pt,parsep=0pt}
+
+% ================================================================
+% Color and section boxes
+% ================================================================
+\usepackage{xcolor}
+\definecolor{PosterBlue}{RGB}{0,72,140}
+\usepackage[most]{tcolorbox}
+
+% Uniform section-header style: blue bar title, white background body
+\newtcolorbox{secbox}[1]{%
+  enhanced, sharp corners,
+  colback=white, colframe=white,
+  colbacktitle=PosterBlue, coltitle=white,
+  fonttitle=\bfseries\small,
+  title=#1,
+  boxrule=0pt, titlerule=0pt,
+  toptitle=1mm, bottomtitle=1mm,
+  left=2mm, right=2mm, top=1.5mm, bottom=1.5mm,
+  before skip=3pt, after skip=3pt}
+
+% ================================================================
+% Math
+% ================================================================
+\usepackage{amsmath}
+
+% ================================================================
+% Tables
+% ================================================================
+\usepackage{booktabs}
+
+% ================================================================
+% TikZ / PGFPlots  (Pareto chart only — no schematic figures)
+% ================================================================
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% ================================================================
+\begin{document}
+\pagestyle{empty}
+
+% ----------------------------------------------------------------
+% Full-width title block
+% ----------------------------------------------------------------
+\begin{center}
+  {\LARGE\bfseries\color{PosterBlue}
+    Balancing Speed and Precision:\\[2pt]
+    The Evolution and Future of Object Detection\par}
+  \vspace{3pt}
+  {\large Kumar Prateek}\par
+  \vspace{1pt}
+  {\normalsize
+    Indian Institute of Information Technology Allahabad
+    \quad\textbullet\quad
+    iit2023087@iiita.ac.in}
+\end{center}
+
+\vspace{1mm}
+\noindent\textcolor{PosterBlue}{\rule{\linewidth}{1.5pt}}
+\vspace{1mm}
+
+% ================================================================
+\begin{multicols}{2}
+
+% ============================================================
+%  COLUMN 1  –  narrative sections
+% ============================================================
+
+\begin{secbox}{INTRODUCTION}
+\small
+\textbf{Object detection} identifies \emph{what} objects are present and \emph{where} they
+are located (class label + bounding box) in a single image.
+The field's 25-year history is a story of navigating one fundamental trade-off:
+
+\begin{itemize}
+  \item \textbf{Precision (mAP)} --- fewer misses, fewer false alarms, tighter localisation.
+  \item \textbf{Speed (FPS)} --- real-time throughput for video, robotics, and edge devices.
+\end{itemize}
+
+\textbf{Key takeaway:} no single ``best'' detector exists; the right choice always depends
+on whether the deployment prioritises \emph{speed} or \emph{precision}.
+\end{secbox}
+
+% ------------------------------------------------------------
+\begin{secbox}{TRADITIONAL ERA \ (PRE-2012)}
+\small
+\textbf{Strategy:} exhaustive sliding-window search with hand-crafted descriptors and a
+shallow classifier.
+
+\begin{itemize}
+  \item \textbf{Viola--Jones (2001):} Haar-like features + integral image + AdaBoost
+        cascade; first real-time face detector.
+  \item \textbf{HOG + SVM (2005):} oriented-gradient histograms tuned for pedestrian
+        detection.
+  \item \textbf{DPM (2008--10):} deformable part models handle pose variation via
+        latent-SVM.
+\end{itemize}
+
+\textbf{Limitation:} brittle to out-of-distribution appearance; sliding-window cost scales
+poorly with image resolution.
+\end{secbox}
+
+% ------------------------------------------------------------
+\begin{secbox}{DEEP LEARNING: TWO-STAGE DETECTORS \ (2014--)}
+\small
+\textbf{Trigger:} AlexNet (2012) showed that CNN features learned from data outperform
+any hand-crafted descriptor.
+
+\textbf{Two-stage pipeline:}
+\begin{enumerate}
+  \item Generate \emph{region proposals} (candidate boxes).
+  \item Classify and refine each proposal with a CNN head.
+\end{enumerate}
+
+\begin{itemize}
+  \item \textbf{R-CNN $\to$ Fast R-CNN:} per-region CNN features $\to$ shared conv.\
+        backbone + RoI pooling.
+  \item \textbf{Faster R-CNN (2015):} Region Proposal Network (RPN) makes proposals
+        fully learnable; end-to-end training at $\approx$26~FPS / 42~mAP.
+\end{itemize}
+
+\textbf{Trade-off:} high accuracy, but per-proposal computation bottlenecks throughput.
+\end{secbox}
+
+% ------------------------------------------------------------
+\begin{secbox}{ONE-STAGE DETECTORS \ (2016--PRESENT)}
+\small
+\textbf{Idea:} dense prediction in a single forward pass --- no separate proposal stage.
+
+\begin{itemize}
+  \item \textbf{YOLO (2016):} unified grid-based regression; $\approx$45~FPS with reduced
+        accuracy on small objects.
+  \item \textbf{SSD (2016):} multi-scale anchor predictions; faster, weaker on small
+        objects.
+  \item \textbf{RetinaNet (2017):} Focal Loss
+        $FL = -\alpha_t(1-p_t)^{\gamma}\log p_t$
+        cures the foreground/background imbalance that hampered earlier one-stage models.
+  \item \textbf{YOLOv5--v8 (2020--23):} anchor-free heads, task-aligned assignment;
+        state-of-the-art real-time performance.
+\end{itemize}
+\end{secbox}
+
+% ------------------------------------------------------------
+\begin{secbox}{TRANSFORMERS: SET PREDICTION \ (2020--)}
+\small
+\textbf{DETR (2020):} reformulates detection as \emph{direct set prediction}.
+
+\begin{itemize}
+  \item Learnable \textbf{object queries} attend globally to encoded image features via a
+        Transformer encoder--decoder.
+  \item \textbf{Hungarian matching} during training provides duplicate-free, one-to-one
+        assignments --- no need for NMS at inference.
+  \item Slow to converge on COCO; Deformable DETR, DN-DETR, and DINO-DETR close the gap.
+\end{itemize}
+
+\textbf{Swin Transformer (2021):} hierarchical windowed attention yields multi-scale
+features competitive with FPN-based CNN backbones.
+\end{secbox}
+
+% ============================================================
+%  Force remaining content to column 2
+% ============================================================
+\columnbreak
+
+% ============================================================
+%  COLUMN 2  –  table, chart, conclusions
+% ============================================================
+
+\begin{secbox}{SOTA COMPARISON \ (COCO val2017)}
+\small
+Representative values; hardware and evaluation settings vary --- always compare within
+identical conditions.
+
+\vspace{2mm}
+\begin{center}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Model}   & \textbf{mAP (\%)} & \textbf{FPS} & \textbf{GFLOPs} & \textbf{Params (M)} \\
+\midrule
+Faster R-CNN     & 42.0 &  26 & 246 & 60.1 \\
+SSD512           & 29.8 &  61 &  90 & 26.3 \\
+YOLOv8-L         & 46.8 &  97 & 165 & 43.7 \\
+DETR-R50         & 42.0 &  38 &  86 & 41.3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{1mm}
+{\scriptsize\textit{Sources: original papers \& COCO leaderboard.}}
+\end{secbox}
+
+% ------------------------------------------------------------
+\begin{secbox}{SPEED--PRECISION PARETO \ (mAP vs.\ FPS)}
+\small
+Each point is one detector; the dashed line marks the Pareto frontier.  A model is
+\emph{Pareto-dominant} if no other model is simultaneously faster \emph{and} more
+accurate.
+
+\vspace{2mm}
+\noindent
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.97\columnwidth,
+  height=0.62\columnwidth,
+  xlabel={FPS \ (higher $=$ faster)},
+  ylabel={mAP\,\% \ (higher $=$ better)},
+  xlabel style={font=\scriptsize},
+  ylabel style={font=\scriptsize},
+  ticklabel style={font=\scriptsize},
+  xmin=10, xmax=120,
+  ymin=24, ymax=52,
+  grid=both,
+  grid style={draw=gray!25, line width=0.4pt},
+  clip=false,
+]
+  % Faster R-CNN
+  \addplot[only marks, mark=triangle*, mark size=3pt, color=blue!80]
+    coordinates {(26,42.0)};
+  \node[font=\tiny, color=blue!80, above right, inner sep=1pt]
+    at (axis cs:26,42.0) {Faster R-CNN};
+
+  % SSD512
+  \addplot[only marks, mark=square*, mark size=2.8pt, color=red!80]
+    coordinates {(61,29.8)};
+  \node[font=\tiny, color=red!80, above right, inner sep=1pt]
+    at (axis cs:61,29.8) {SSD512};
+
+  % YOLOv8-L
+  \addplot[only marks, mark=*, mark size=3pt, color=green!55!black]
+    coordinates {(97,46.8)};
+  \node[font=\tiny, color=green!55!black, above left, inner sep=1pt]
+    at (axis cs:97,46.8) {YOLOv8-L};
+
+  % DETR-R50
+  \addplot[only marks, mark=diamond*, mark size=3pt, color=orange!80!black]
+    coordinates {(38,42.0)};
+  \node[font=\tiny, color=orange!80!black, below right, inner sep=1pt]
+    at (axis cs:38,42.0) {DETR-R50};
+
+  % Pareto frontier
+  \addplot[dashed, thick, color=gray!65, no marks]
+    coordinates {(26,42.0)(38,42.0)(97,46.8)};
+\end{axis}
+\end{tikzpicture}
+
+\vspace{0.5mm}
+{\scriptsize\textbf{Figure:} mAP vs.\ FPS for four representative detectors (illustrative
+values).  YOLOv8-L sits at the leading edge of the Pareto frontier.}
+\end{secbox}
+
+% ------------------------------------------------------------
+\begin{secbox}{FUTURE DIRECTIONS}
+\small
+\begin{itemize}
+  \item \textbf{Edge AI / TinyML:} structured pruning, INT8 quantisation, and knowledge
+        distillation for mobile and embedded deployment.
+  \item \textbf{3-D \& multi-modal:} LiDAR--camera fusion and Bird's-Eye-View (BEV)
+        representations for autonomous driving.
+  \item \textbf{Open-vocabulary detection:} text-guided grounding (GLIP, Grounding DINO)
+        enables detecting arbitrary, unseen categories without per-class training.
+  \item \textbf{Self-supervised pre-training:} DINO/CLIP-style features reduce annotation
+        burden for downstream detectors.
+\end{itemize}
+\end{secbox}
+
+% ------------------------------------------------------------
+\begin{secbox}{CONCLUSION}
+\small
+Object detection evolved from \emph{hand-crafted exhaustive search} (Viola--Jones,
+HOG+SVM) through \emph{deep two-stage pipelines} (R-CNN family) and
+\emph{real-time one-stage predictors} (YOLO, SSD, RetinaNet) to
+\emph{transformer-based set prediction} (DETR).  Each transition expanded the
+speed--precision Pareto frontier outward.
+
+\smallskip
+\textbf{Practical guidance:}
+\begin{itemize}
+  \item \textbf{Latency-sensitive} (video analytics, robotics) $\to$ YOLOv8.
+  \item \textbf{Accuracy-critical} (medical imaging, surveillance) $\to$ Faster R-CNN or
+        a DETR variant.
+  \item \textbf{Novel-category generalisation} $\to$ open-vocabulary detectors.
+\end{itemize}
+\end{secbox}
+
+% ------------------------------------------------------------
+\begin{secbox}{REFERENCES (SELECTED)}
+\scriptsize
+[1]~Viola \& Jones, CVPR 2001.\quad
+[2]~Dalal \& Triggs, CVPR 2005.\quad
+[3]~Felzenszwalb et al., PAMI 2010.\quad
+[4]~Krizhevsky et al., NeurIPS 2012.\quad
+[5]~Girshick et al., CVPR 2014.\quad
+[6]~Ren et al., NeurIPS 2015.\quad
+[7]~Redmon et al., CVPR 2016.\quad
+[8]~Liu et al., ECCV 2016.\quad
+[9]~Lin et al., ICCV 2017.\quad
+[10]~Carion et al., ECCV 2020.\quad
+[11]~Liu et al., ICCV 2021 (Swin).\quad
+[12]~Jocher et al., 2023 (YOLOv8).
+\end{secbox}
+
+\end{multicols}
+\end{document}
