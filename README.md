@@ -88,6 +88,29 @@ npm start
 
 ---
 
+## Object Detection Survey Poster
+
+A standalone one-page academic poster (`poster.tex`) is included in the repository root.  It presents the object detection evolution article in a compact A0 portrait format with a 3-column layout, blue section headers, TikZ workflow diagrams, a comparison table, and a Pareto-frontier plot.
+
+### Compiling the Poster
+
+**On Overleaf (recommended):**
+1. Create a new blank Overleaf project.
+2. Upload `poster.tex` (no additional files required — all figures are generated with TikZ/PGFPlots).
+3. Set the compiler to **pdfLaTeX**.
+4. Click **Compile** — the poster renders as a single A0-portrait PDF page.
+
+**Locally (TeX Live ≥ 2020 or MiKTeX):**
+```sh
+pdflatex poster.tex
+```
+Run once; no BibTeX pass is needed (references are inline).
+
+**Required packages** (all standard, available in TeX Live / MiKTeX / Overleaf):
+`geometry`, `multicol`, `xcolor`, `tcolorbox`, `tikz` (with `positioning`, `arrows.meta`, `shapes.geometric`, `calc` libraries), `pgfplots`, `amsmath`, `booktabs`, `enumitem`, `microtype`, `times`.
+
+---
+
 ## License
 MIT
 
