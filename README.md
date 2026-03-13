@@ -93,6 +93,33 @@ MIT
 
 ---
 
+## Poster: Object Detection Evolution
+
+The repository also contains `poster.tex` — a one-page, two-column LaTeX poster
+summarising the evolution of object detection (Traditional → Two-Stage → One-Stage →
+Transformers → Future Trends).
+
+### Compiling the Poster
+
+**Requirements:** A modern TeX distribution with the following packages (all included in
+TeX Live 2020+ and MiKTeX):
+`times`, `geometry`, `multicol`, `enumitem`, `xcolor`, `tcolorbox` (with `most`
+library), `amsmath`, `booktabs`, `graphicx`, `tikz`, `pgfplots`.
+
+**Overleaf (recommended):**
+1. Upload `poster.tex` to a new Overleaf project.
+2. Set the compiler to **pdfLaTeX**.
+3. Click **Recompile** — the poster compiles to a single A4 portrait PDF.
+
+**Local (pdfLaTeX):**
+```sh
+pdflatex poster.tex
+```
+
+The output file is `poster.pdf` (A4 portrait, one page).
+
+---
+
 ## Contributors
 - [Kumar Prateek](https://github.com/prateek2105)
 - [Aaryan Kuntal](https://github.com/schroder0)
