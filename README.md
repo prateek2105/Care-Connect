@@ -88,6 +88,25 @@ npm start
 
 ---
 
+## Research Poster
+
+A one-page conference-style poster summarising the object detection survey
+(`object_detection_2.tex`) is provided as **`poster_2col.tex`**.
+
+### Compiling the Poster
+
+Requires a standard TeX Live installation (or MiKTeX / Overleaf).
+
+```sh
+pdflatex poster_2col.tex
+```
+
+The poster uses a two-column A0 landscape layout and the following packages:
+`geometry`, `multicol`, `tcolorbox`, `tikz`, `pgfplots`, `booktabs`, `colortbl`.
+All are included in TeX Live 2020+ and Overleaf.
+
+---
+
 ## License
 MIT
 
