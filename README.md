@@ -88,6 +88,29 @@ npm start
 
 ---
 
+## Object Detection Poster
+
+A one-page LaTeX poster summarising the article *Balancing Speed and Precision: The Evolution and Future of Object Detection* is available as [`poster.tex`](./poster.tex).
+
+### Compile instructions
+
+**Requirements:** A LaTeX distribution with `pdflatex` (e.g. TeX Live 2021+ or MiKTeX), plus the packages `tcolorbox`, `pgfplots`, `tikz`, `booktabs`, and `caption` (all included in a full TeX Live install).
+
+```sh
+# Single compile step – produces poster.pdf
+pdflatex poster.tex
+```
+
+Or, using **Overleaf**: upload `poster.tex`, set the compiler to *pdfLaTeX*, and click *Recompile*.
+
+### Design notes
+- Three-column `minipage` grid for exact, even column heights.
+- Two TikZ pipeline workflow diagrams (two-stage and one-stage detection).
+- One PGFPlots scatter plot showing the speed–precision (FPS vs. mAP) Pareto frontier.
+- All figures use `\resizebox{\linewidth}{!}{…}` for consistent column-width sizing.
+
+---
+
 ## License
 MIT
 
