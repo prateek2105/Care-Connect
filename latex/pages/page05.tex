@@ -1,0 +1,158 @@
+% ============================================================
+% PAGE 5 — Module 1: Advanced Feature Extraction Backbone
+% ============================================================
+
+\subsection{Module 1: Advanced Feature Extraction Backbone}
+
+The backbone is the computational engine that transforms raw
+pixel intensities into hierarchically organized feature
+representations. In FusionDet the CNN branch of the dual
+backbone carries the bulk of the spatial feature extraction
+workload, and its design therefore exerts a disproportionate
+influence on both accuracy and inference latency. We adopt a
+customized \textit{Cross-Stage Partial Darknet}
+(CSP-Darknet) \cite{wang2020cspnet} as the convolutional
+backbone, augmented with a lightweight spatial attention
+mechanism that sharpens the network's focus on
+informationally dense regions of each feature map.
+
+\subsubsection{CSP-Darknet Formulation}
+
+The defining characteristic of CSP-Darknet is its partitioning
+of the input feature map at each stage into two parallel
+streams: a \textit{dense stream} that passes through a
+sequence of residual bottleneck blocks, and a \textit{shortcut
+stream} that bypasses those blocks entirely. Let
+$\mathbf{X}^{l} \in \mathbb{R}^{C \times H \times W}$ denote
+the input to stage $l$. The channel dimension is split evenly:
+\begin{equation}
+    \mathbf{X}_{\text{dense}}^{l},\;
+    \mathbf{X}_{\text{short}}^{l}
+    = \text{Split}\!\bigl(\mathbf{X}^{l}\bigr)
+    \label{eq:csp_split}
+\end{equation}
+The dense stream is processed by $M$ sequential bottleneck
+blocks:
+\begin{equation}
+    \mathbf{Y}_{\text{dense}}^{l}
+    = \bigl(\mathcal{B}_{M}^{l} \circ \cdots \circ
+      \mathcal{B}_{2}^{l} \circ
+      \mathcal{B}_{1}^{l}\bigr)
+      \bigl(\mathbf{X}_{\text{dense}}^{l}\bigr)
+    \label{eq:csp_dense}
+\end{equation}
+where each $\mathcal{B}_{m}^{l}$ is a residual block
+comprising a $1 \times 1$ channel-reduction convolution followed
+by a $3 \times 3$ depthwise-separable convolution
+\cite{howard2017mobilenets} and a residual addition. The two
+streams are then re-united via concatenation and a $1 \times 1$
+transition convolution $\mathcal{T}^{l}$:
+\begin{equation}
+    \mathbf{X}^{l+1}
+    = \mathcal{T}^{l}\!\Bigl(
+        \text{Concat}\bigl(
+            \mathbf{Y}_{\text{dense}}^{l},\;
+            \mathbf{X}_{\text{short}}^{l}
+        \bigr)
+      \Bigr)
+    \label{eq:csp_merge}
+\end{equation}
+This cross-stage partial connectivity yields two concrete
+benefits. First, because only half the channels traverse the
+expensive bottleneck chain, the floating-point operation count
+is reduced by nearly 40\% relative to a plain residual stack of
+equivalent depth \cite{wang2020cspnet}. Second, the gradient
+signal flowing through the shortcut stream remains undiluted by
+the depth of the dense path, improving convergence stability
+during training.
+
+Our implementation instantiates four CSP stages with channel
+widths $\{64, 128, 256, 512\}$ and bottleneck counts
+$M \in \{2, 4, 6, 4\}$, producing multi-scale feature maps
+$\{P_2, P_3, P_4, P_5\}$ at strides $\{4, 8, 16, 32\}$
+relative to the input resolution.
+
+\subsubsection{Activation Functions}
+
+The choice of activation function within each bottleneck
+materially affects both representational capacity and hardware
+throughput. We employ the \textit{Sigmoid Linear Unit} (SiLU),
+also known as Swish-1 \cite{ramachandran2018searching}:
+\begin{equation}
+    \text{SiLU}(x) = x \cdot \sigma(x)
+                    = \frac{x}{1 + e^{-x}}
+    \label{eq:silu}
+\end{equation}
+where $\sigma(\cdot)$ denotes the logistic sigmoid. Unlike
+ReLU, SiLU is smooth and non-monotonic---it permits small
+negative activations, which has been shown to improve gradient
+flow in deep residual topologies \cite{ramachandran2018searching}.
+Compared with the closely related Mish activation
+\cite{misra2020mish},
+\begin{equation}
+    \text{Mish}(x) = x \cdot \tanh\!\bigl(
+        \ln(1 + e^{x})\bigr)
+    \label{eq:mish}
+\end{equation}
+SiLU offers a marginally lower computational cost because it
+avoids the nested $\tanh$--softplus composition, while
+empirical benchmarks on COCO indicate that the two activations
+produce statistically indistinguishable mAP when all other
+hyperparameters are held constant
+\cite{bochkovskiy2020yolov4}. We therefore select SiLU as the
+default activation throughout the backbone, neck, and detection
+heads, prioritizing the modest latency advantage on both GPU
+and edge inference runtimes.
+
+\subsubsection{Spatial Attention Augmentation}
+
+Standard convolutional stages treat every spatial location
+within a feature map with equal computational weight, yet not
+all locations carry equal information---object-bearing regions
+are typically far more salient than background. To bias the
+backbone toward these high-value regions without incurring a
+significant parameter overhead, we insert a lightweight
+\textit{Spatial Attention Module} (SAM) after the final
+bottleneck of each CSP stage.
+
+Given a feature map
+$\mathbf{F} \in \mathbb{R}^{C \times H \times W}$, SAM first
+compresses the channel dimension by computing both a
+channel-wise max-pool and a channel-wise average-pool,
+yielding two single-channel descriptors:
+\begin{equation}
+    \mathbf{D}_{\max} = \max_{c}\, \mathbf{F}_{c},
+    \qquad
+    \mathbf{D}_{\text{avg}} = \frac{1}{C}
+    \sum_{c=1}^{C} \mathbf{F}_{c}
+    \label{eq:sam_pool}
+\end{equation}
+These descriptors are concatenated along the channel axis and
+passed through a $7 \times 7$ convolution followed by a sigmoid
+gate to produce a spatial attention map
+$\mathbf{M}_{s} \in [0,1]^{H \times W}$:
+\begin{equation}
+    \mathbf{M}_{s} = \sigma\!\Bigl(
+        f^{7 \times 7}\bigl(
+            \text{Concat}(\mathbf{D}_{\max},\,
+                           \mathbf{D}_{\text{avg}})
+        \bigr)
+    \Bigr)
+    \label{eq:sam_gate}
+\end{equation}
+The refined feature map is then obtained via element-wise
+multiplication:
+\begin{equation}
+    \hat{\mathbf{F}} = \mathbf{M}_{s} \odot \mathbf{F}
+    \label{eq:sam_refine}
+\end{equation}
+Because the entire SAM pathway involves only a single
+$7 \times 7$ convolution operating on a two-channel input, it
+adds fewer than $0.01$~GFLOPs per stage---a negligible cost
+that nonetheless provides a consistent $0.4$--$0.6$~point mAP
+improvement across all scale levels in our ablation
+experiments (detailed in Section~\ref{sec:results}). This
+design draws on the spatial branch of CBAM
+\cite{woo2018cbam} but omits the channel-attention component,
+which is already handled globally by the AFF module described
+in (\ref{eq:aff}).

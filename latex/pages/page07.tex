@@ -1,0 +1,197 @@
+% ============================================================
+% PAGE 7 — Module 3: Detection Head & Optimized Loss Functions
+% ============================================================
+
+\subsection{Module 3: Detection Head and Optimized Loss
+Functions}
+
+The detection head is the final computational stage of
+FusionDet: it consumes the four-level feature pyramid
+$\{\hat{\mathbf{N}}_l\}_{l=2}^{5}$ produced by the neck and
+emits, for every spatial position at every scale, a joint
+prediction of object presence, class identity, and bounding-box
+geometry. FusionDet adopts an \textit{anchor-free, decoupled}
+head design in which classification and regression are handled
+by independent sub-networks---an architectural choice
+empirically shown to eliminate the task-interference that arises
+when a single shared feature branch must simultaneously
+represent discriminative appearance features (for
+classification) and precise geometric offsets (for regression)
+\cite{ge2021yolox}.
+
+\subsubsection{Decoupled Head Structure}
+
+For each pyramid level $l$, the head receives the
+attention-refined feature map
+$\hat{\mathbf{N}}_l \in \mathbb{R}^{C \times H_l \times W_l}$
+and passes it through two parallel branches:
+
+\begin{itemize}
+  \item \textbf{Classification branch:} two $3\times3$
+    convolutional layers with SiLU activations, followed by a
+    $1\times1$ projection to $C_{\text{cls}}$ channels, yielding
+    per-location class probability logits.
+  \item \textbf{Regression branch:} two $3\times3$
+    convolutional layers with SiLU activations, followed by a
+    $1\times1$ projection to four channels encoding the
+    center-offset and log-scale box parameters
+    $(\Delta x, \Delta y, \Delta w, \Delta h)$.
+\end{itemize}
+
+An additional lightweight \textbf{objectness branch} (one
+$1\times1$ layer) produces a binary foreground score for each
+location, which is used during inference to suppress predictions
+at background locations before applying non-maximum
+suppression. The decoupled architecture adds only ${\sim}0.1$~M
+parameters per pyramid level relative to a coupled head, while
+consistently improving mAP by $1.0$--$1.5$~pp in our
+experiments.
+
+\subsubsection{Anchor-Free Target Assignment}
+
+Unlike anchor-based heads that pre-define a discrete set of
+aspect ratios and scales at each grid cell, FusionDet directly
+predicts box offsets from every foreground grid cell. During
+training, a ground-truth box $b = (x, y, w, h)$ is assigned to
+level $l$ if $\max(w, h)$ falls within a scale range
+$[s_l, s_{l+1})$ pre-defined per level, and to spatial cell
+$(i, j)$ if the cell center lies inside the box. This
+SimOTA-inspired \cite{ge2021yolox} dynamic assignment resolves
+ambiguity for small or heavily overlapping boxes by selecting
+the top-$k$ candidate cells per ground-truth based on joint
+classification and regression cost.
+
+\subsubsection{Composite Training Loss}
+
+The full training objective for FusionDet is a weighted sum of
+three terms:
+\begin{equation}
+  L_{\text{total}} =
+    \lambda_{\text{cls}}\,L_{\text{cls}}
+    + \lambda_{\text{box}}\,L_{\text{CIoU}}
+    + \lambda_{\text{obj}}\,L_{\text{obj}}
+  \label{eq:loss_total}
+\end{equation}
+with $\lambda_{\text{cls}} = 1.0$, $\lambda_{\text{box}} = 5.0$,
+and $\lambda_{\text{obj}} = 1.0$ (validated by grid search).
+
+\paragraph{Classification Loss.}
+We adopt Varifocal Loss (VFL), which generalizes the standard
+binary cross-entropy by assigning soft quality-aware labels and
+weighting the loss non-uniformly across foreground and
+background samples. For a predicted class-score vector
+$\hat{\mathbf{p}}$ and a quality-weighted target
+$\mathbf{q}$ (set to the predicted IoU for positives and zero
+for negatives), VFL is:
+\begin{equation}
+  L_{\text{cls}} = -\sum_{i}
+  \Bigl[
+    q_i \log \hat{p}_i
+    + \alpha\,(1 - q_i)\,\hat{p}_i^{\gamma}
+      \log(1 - \hat{p}_i)
+  \Bigr]
+  \label{eq:vfl}
+\end{equation}
+where $\alpha = 0.75$ and $\gamma = 2.0$ are focal parameters
+that down-weight the contribution of easy negatives.
+
+\paragraph{Bounding-Box Regression Loss (CIoU).}
+Intersection-over-Union (IoU) is the canonical measure of box
+overlap. Simple $\ell_1$ or $\ell_2$ regression losses are not
+scale-invariant and do not directly optimize IoU. Complete IoU
+Loss \cite{zheng2020ciou} addresses both issues by
+decomposing the regression penalty into three geometrically
+meaningful terms.
+
+Let $B = (x, y, w, h)$ denote the predicted box and
+$B^* = (x^*, y^*, w^*, h^*)$ the matched ground-truth box.
+Define $\rho^2$ as the squared Euclidean distance between
+their centers:
+\begin{equation}
+  \rho^{2} =
+  (x - x^{*})^{2} + (y - y^{*})^{2}
+  \label{eq:ciou_dist}
+\end{equation}
+and let $c$ denote the diagonal length of the smallest
+enclosing box of $B$ and $B^*$. The aspect-ratio consistency
+term is:
+\begin{equation}
+  v = \frac{4}{\pi^{2}}
+  \left(
+    \arctan\frac{w^{*}}{h^{*}}
+    - \arctan\frac{w}{h}
+  \right)^{2}
+  \label{eq:ciou_v}
+\end{equation}
+with the trade-off coefficient:
+\begin{equation}
+  \alpha_v =
+  \frac{v}{(1 - \text{IoU}) + v}
+  \label{eq:ciou_alpha}
+\end{equation}
+The CIoU loss is then:
+\begin{equation}
+  L_{\text{CIoU}} =
+  1 - \text{IoU}
+  + \frac{\rho^{2}}{c^{2}}
+  + \alpha_v\,v
+  \label{eq:ciou_loss}
+\end{equation}
+The first term penalizes insufficient overlap, the second
+penalizes center-point misalignment relative to the enclosing
+diagonal, and the third penalizes aspect-ratio inconsistency.
+Together they provide a comprehensive, differentiable proxy for
+the localization quality of each predicted box
+\cite{zheng2020ciou,rezatofighi2019giou}.
+
+\paragraph{Objectness Loss.}
+The objectness branch is trained with binary cross-entropy,
+where the positive label for cell $(i,j)$ at level $l$ is set
+to the IoU between the predicted box and the assigned
+ground-truth box (capped at 1.0), encoding the notion that a
+cell's objectness score should reflect \textit{how well} the
+box it predicts covers the ground truth rather than merely
+\textit{whether} any object is present:
+\begin{equation}
+  L_{\text{obj}} = -\sum_{i,j,l}
+  \Bigl[
+    t_{ij}^{l} \log o_{ij}^{l}
+    + (1 - t_{ij}^{l})\log(1 - o_{ij}^{l})
+  \Bigr]
+  \label{eq:obj_loss}
+\end{equation}
+where $t_{ij}^{l} = \text{IoU}(\hat{B}_{ij}^l, B^*)$ for
+positive cells and $t_{ij}^{l} = 0$ for negatives.
+
+\subsubsection{Summary}
+
+Table~\ref{tab:head_summary} summarizes the parameters and
+computational cost of the decoupled head at each pyramid level
+for an input resolution of $640\times640$.
+
+\begin{table}[h]
+\centering
+\caption{Detection Head Cost per Pyramid Level ($C=256$,
+         Input $640{\times}640$).}
+\label{tab:head_summary}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Level & Stride & Spatial & Params (M) & GFLOPs \\
+\midrule
+$\hat{\mathbf{N}}_2$ & 4  & $160{\times}160$ & 0.66 & 1.08 \\
+$\hat{\mathbf{N}}_3$ & 8  & $80{\times}80$   & 0.66 & 0.27 \\
+$\hat{\mathbf{N}}_4$ & 16 & $40{\times}40$   & 0.66 & 0.07 \\
+$\hat{\mathbf{N}}_5$ & 32 & $20{\times}20$   & 0.66 & 0.02 \\
+\midrule
+\textbf{Total}       &    &                  & \textbf{2.64} & \textbf{1.44} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The decoupled head's total cost of $1.44$~GFLOPs represents
+less than $3\%$ of FusionDet's overall inference budget, yet
+its decoupled design and quality-aware loss functions are
+responsible for the majority of the accuracy advantage over
+coupled-head baselines, as confirmed by the ablation study
+in Section~\ref{sec:results}.

@@ -1,0 +1,106 @@
+% ============================================================
+% PAGE 2 — Introduction
+% ============================================================
+
+\section{Introduction}
+\label{sec:intro}
+
+Object detection—the simultaneous localization and semantic
+classification of every instance of interest within an
+image—occupies a foundational role in modern computer vision.
+Autonomous vehicles must identify pedestrians, cyclists, and
+road signs within millisecond-scale budgets; medical imaging
+systems must locate lesions and anatomical landmarks with
+sub-pixel accuracy; and surveillance platforms must track
+multiple objects across complex, dynamic scenes. In each
+setting, the tension between \textit{speed} and
+\textit{accuracy} is real and consequential.
+
+Over the past decade, deep learning has transformed the detection
+landscape. Two-stage detectors such as Faster R-CNN
+\cite{ren2015faster} decompose the problem into a region-proposal
+step followed by per-proposal classification and regression, yielding
+high accuracy at the cost of elevated computational budgets.
+One-stage detectors---YOLO \cite{redmon2016yolo} and its
+descendants---collapse these stages into a single forward pass,
+achieving competitive accuracy at substantially lower latency.
+Yet both families share a common architectural assumption: a
+\textit{single backbone} extracts all features, and the subsequent
+neck and head merely reorganize and decode those features.
+
+This assumption has come under scrutiny in the transformer era.
+Vision Transformers (ViTs) \cite{dosovitskiy2021vit}, built on
+the multi-head self-attention primitive of Vaswani
+\textit{et al.}\ \cite{vaswani2017attention}, can model
+relationships between image patches separated by hundreds of pixels---
+a capability that convolution's local receptive fields cannot
+replicate without extreme depth. End-to-end detectors such as DETR
+\cite{carion2020detr} and its hierarchical extension Swin-Transformer
+\cite{liu2021swin} have accordingly achieved state-of-the-art results
+on standard benchmarks. The cost, however, is considerable: full
+self-attention scales quadratically with the number of tokens, making
+high-resolution detection expensive.
+
+\subsection{Motivation}
+\label{sec:motivation}
+
+The core insight motivating FusionDet is that CNNs and transformers
+are \textit{complementary} rather than competing. A CNN processes
+every spatial location with learnable convolutional filters: it is
+parameter-efficient, hardware-friendly, and naturally equivariant to
+local translations. A transformer processes every token in relation
+to every other token: it is globally aware, dynamically reweights
+distant context, and is less constrained by the locality of
+convolutional kernels. Object detection benefits from both
+properties---local texture and edge information is critical for
+precise localization, while global context is critical for resolving
+ambiguous classifications in cluttered scenes.
+
+Prior work has combined CNNs and transformers in various ways:
+inserting transformer blocks at the bottleneck of a CNN backbone,
+replacing convolutional layers with depthwise attention, or using
+a transformer decoder to query a CNN-derived feature map. Each of
+these hybrids privileges one paradigm over the other, using the
+secondary modality as a post-hoc enhancement rather than as an equal
+partner. FusionDet, by contrast, operates \textit{dual backbones in
+parallel} and fuses their outputs at every scale level through a
+learned Adaptive Feature Fusion module, ensuring that both
+representational streams contribute symmetrically to every
+downstream computation.
+
+\subsection{Contributions}
+\label{sec:contributions}
+
+This paper makes the following four original contributions:
+
+\begin{enumerate}
+  \item \textbf{Dual-Backbone Architecture.} We present a parallel
+    CNN--transformer backbone that processes each input image
+    simultaneously through a CSP-Darknet branch and a linear-attention
+    transformer branch, producing spatially and semantically aligned
+    feature tensors at four resolution levels.
+
+  \item \textbf{Adaptive Feature Fusion (AFF) Module.} We propose a
+    trainable gating module that learns, \textit{per-channel and
+    per-spatial-location}, how to blend the CNN and transformer
+    outputs---going beyond the fixed weighted sums used in prior
+    fusion work.
+
+  \item \textbf{Bidirectional Path Aggregation Neck with Lightweight
+    Channel Attention.} We integrate a LCA module into every level of
+    a bidirectional PANet neck, providing dynamic channel
+    recalibration at negligible parameter and compute overhead.
+
+  \item \textbf{Comprehensive Empirical Evaluation.} We present
+    thorough ablation studies on MS-COCO that isolate the contribution
+    of each proposed component, and we compare FusionDet against
+    twelve contemporary detectors across five speed--accuracy
+    operating points.
+\end{enumerate}
+
+The remainder of the paper is organized as follows.
+Section~\ref{sec:related} surveys related work.
+Section~\ref{sec:problem} formalizes the detection problem and
+introduces notation. Section~\ref{sec:arch} presents the full
+FusionDet architecture. Section~\ref{sec:results} reports
+experimental results, and Section~\ref{sec:conclusion} concludes.
