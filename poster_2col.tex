@@ -1,0 +1,274 @@
+\documentclass[10pt]{article}
+
+% -------- Page / typography --------
+\usepackage[a4paper,margin=10mm]{geometry}
+\usepackage{times}
+\usepackage{microtype}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+
+% -------- Two-column layout --------
+\usepackage{multicol}
+\setlength{\columnsep}{8mm}
+\setlength{\columnseprule}{0pt}
+
+% -------- Color + section boxes --------
+\usepackage{xcolor}
+\definecolor{PosterBlue}{RGB}{0,72,140}
+\usepackage[most]{tcolorbox}
+\tcbset{enhanced, boxrule=0pt, arc=0mm,
+        left=3mm, right=3mm, top=1mm, bottom=1mm}
+
+\newtcolorbox{sectionbox}[1]{%
+  colback=white,
+  frame hidden,
+  title=\textcolor{white}{\textbf{\small #1}},
+  colbacktitle=PosterBlue,
+  coltitle=white,
+  attach boxed title to top left={xshift=0mm,yshift=-2mm},
+  boxed title style={sharp corners, boxrule=0pt,
+                     left=3mm, right=3mm, top=1mm, bottom=1mm},
+  before skip=4pt, after skip=4pt
+}
+
+% -------- Tables / plots --------
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% -------- Compact lists --------
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=1.2em,topsep=1pt,itemsep=0pt,parsep=0pt}
+
+\begin{document}
+\pagestyle{empty}
+
+% ================= HEADER =================
+{\centering
+{\Large\bfseries\color{PosterBlue}
+Object Detection: Advancing the Trade-off Between Speed and Accuracy}\\[2pt]
+{\normalsize Kumar Prateek}\\[1pt]
+{\small\itshape Dept.\ of Information Technology, IIIT Allahabad
+  \quad|\quad iit2023087@iiita.ac.in}\\[3pt]
+}
+\noindent\textcolor{PosterBlue}{\rule{\linewidth}{0.8pt}}
+\vspace{1mm}
+
+\begin{multicols}{2}
+
+% =================== LEFT COLUMN ===================
+
+\begin{sectionbox}{MOTIVATION \& KEY IDEA}
+\footnotesize
+Object detection answers \textbf{what} objects are present and
+\textbf{where}---core for robotics, autonomous vehicles, and
+visual analytics. Its evolution is a repeated effort to push
+the \textbf{speed--precision frontier} outward.
+
+\smallskip
+\textbf{Core tension:} mechanisms that raise accuracy (deeper
+backbones, multi-scale fusion) also raise compute; efficiency
+strategies can sacrifice spatial detail or semantic richness.
+
+\textbf{Key takeaway:} the ``best'' detector depends on
+deployment constraints---FPS, latency, power, memory, accuracy.
+\end{sectionbox}
+
+\begin{sectionbox}{EVOLUTION OF OBJECT DETECTION}
+\footnotesize
+\textbf{1) Traditional Era (pre-2012).}
+Viola--Jones, HOG+SVM, and DPM used hand-crafted features with
+sliding-window search. Effective on CPUs but limited by fixed
+representations that could not generalize to diverse scenes.
+
+\smallskip
+\textbf{2) Deep Learning Shift (2012+).}
+AlexNet proved CNNs learn hierarchical features end-to-end,
+replacing manual descriptors and lifting the representation ceiling.
+
+\smallskip
+\textbf{3) Two-Stage Detectors (precision-first).}
+R-CNN $\to$ Fast R-CNN $\to$ Faster R-CNN: generate candidate
+regions first, then classify/refine each. Strong mAP, higher latency.
+
+\smallskip
+\textbf{4) One-Stage Detectors (speed-first).}
+YOLO/SSD perform dense prediction in a single pass---fast, but
+early versions lagged on small objects due to class imbalance.
+
+\smallskip
+\textbf{5) Focal Loss / RetinaNet (2017).}
+Reweights easy negatives so training focuses on hard examples,
+closing the mAP gap while preserving single-stage speed.
+
+\smallskip
+\textbf{6) Transformers / DETR (2020+).}
+Set prediction via attention + Hungarian matching eliminates
+anchors and NMS, enabling cleaner end-to-end pipelines.
+\end{sectionbox}
+
+\begin{sectionbox}{SOTA SNAPSHOT}
+\footnotesize
+\begin{itemize}
+  \item \textbf{Faster R-CNN} (42.0 mAP, 26 FPS): best recall on
+    small/occluded objects; heavy (246 GFLOPs, 60\,M params).
+  \item \textbf{SSD512} (29.8 mAP, 61 FPS): lightweight and fast;
+    weaker on small objects, limited multi-scale reasoning.
+  \item \textbf{DETR} (42.0 mAP, 38 FPS): matches two-stage mAP
+    with simpler pipeline; no anchors or NMS.
+  \item \textbf{YOLOv8-L} (46.8 mAP, 97 FPS): best balanced point
+    on the Pareto frontier; top choice for real-time deployment.
+  \item Modern YOLO variants push both mAP \emph{and} FPS higher
+    than previous alternatives.
+\end{itemize}
+\end{sectionbox}
+
+\begin{sectionbox}{WHEN TO USE WHICH MODEL}
+\footnotesize
+\centering
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Requirement} & \textbf{Two-stage} & \textbf{One-stage} & \textbf{DETR} \\
+\midrule
+Max mAP            & \textbf{High}  & Med--High      & High          \\
+Real-time FPS      & Low--Med       & \textbf{High}  & Med           \\
+Small objects      & \textbf{High}  & Med--High      & Med           \\
+Pipeline simplicity& Med            & Med            & \textbf{High} \\
+Edge deployment    & Low--Med       & \textbf{High}  & Med           \\
+No NMS/anchors     & No             & Partial        & \textbf{Yes}  \\
+\bottomrule
+\end{tabular}
+
+\vspace{1mm}
+\raggedright\scriptsize
+\textbf{Rule of thumb:} FPS-critical $\Rightarrow$ YOLO;
+mAP-critical $\Rightarrow$ Two-stage;
+Simplicity $\Rightarrow$ DETR.
+\end{sectionbox}
+
+% =================== RIGHT COLUMN ===================
+
+\begin{sectionbox}{SOTA COMPARISON TABLE}
+\footnotesize
+Quantitative snapshot on COCO \textit{val}.
+Compare under consistent conditions (resolution, GPU, settings).
+
+\vspace{2mm}
+\centering
+\scriptsize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Model} & \textbf{mAP} & \textbf{FPS} & \textbf{GFLOPs} & \textbf{Params} \\
+\midrule
+Faster R-CNN & 42.0 & 26  & 246 & 60.1\,M \\
+SSD512       & 29.8 & 61  & 90  & 26.3\,M \\
+RetinaNet    & 40.8 & 18  & 190 & 36.4\,M \\
+DETR         & 42.0 & 38  & 86  & 41.3\,M \\
+YOLOv5-L     & 44.5 & 80  & 135 & 46.5\,M \\
+YOLOv8-L     & 46.8 & 97  & 165 & 43.7\,M \\
+\bottomrule
+\end{tabular}
+
+\vspace{1mm}
+\raggedright\footnotesize
+\textbf{Interpretation:} Two-stage models maximize mAP but pay
+latency; YOLO variants offer the best Pareto balance; DETR changes
+the paradigm with set prediction and attention.
+\end{sectionbox}
+
+\begin{sectionbox}{PARETO FRONTIER (mAP vs.\ FPS)}
+\footnotesize
+Models closer to the \textbf{upper-right} are preferred.
+Progress means moving the frontier outward.
+
+\vspace{1mm}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.90\columnwidth,
+  height=0.55\columnwidth,
+  grid=both,
+  grid style={draw=gray!20},
+  xlabel={\footnotesize FPS (higher $\to$ faster)},
+  ylabel={\footnotesize mAP},
+  xmin=0, xmax=110,
+  ymin=25, ymax=52,
+  xtick={0,20,40,60,80,100},
+  ytick={25,30,35,40,45,50},
+  ticklabel style={font=\tiny},
+  label style={font=\footnotesize},
+  legend style={font=\tiny, at={(0.98,0.05)},
+                anchor=south east, draw=none, fill=none, row sep=-2pt},
+  legend cell align=left,
+]
+\addplot[only marks,mark=triangle*,mark size=2pt,color=blue]
+  coordinates {(26,42.0)};
+\addplot[only marks,mark=square*,mark size=2pt,color=red]
+  coordinates {(61,29.8)};
+\addplot[only marks,mark=pentagon*,mark size=2pt,color=orange]
+  coordinates {(18,40.8)};
+\addplot[only marks,mark=diamond*,mark size=2pt,color=teal]
+  coordinates {(38,42.0)};
+\addplot[only marks,mark=oplus*,mark size=2pt,color=violet]
+  coordinates {(80,44.5)};
+\addplot[only marks,mark=*,mark size=2.4pt,color=black]
+  coordinates {(97,46.8)};
+\legend{Faster R-CNN,SSD512,RetinaNet,DETR,YOLOv5-L,YOLOv8-L}
+\end{axis}
+\end{tikzpicture}
+\end{sectionbox}
+
+\begin{sectionbox}{CONCLUSION}
+\footnotesize
+\begin{itemize}
+  \item Detection evolved: \textbf{hand-crafted} $\to$ \textbf{CNN}
+    $\to$ \textbf{one-stage dense} $\to$ \textbf{transformer set prediction}.
+  \item Progress $=$ shifting the Pareto frontier outward---higher
+    mAP at same FPS or higher FPS at same mAP.
+  \item The ``best'' model is deployment-dependent: latency, power,
+    object scale, and acceptable error all determine the choice.
+  \item Modern practice: start with \textbf{YOLOv8}; switch to
+    \textbf{two-stage} for max mAP; use \textbf{DETR-style} for
+    end-to-end reasoning.
+\end{itemize}
+\end{sectionbox}
+
+\begin{sectionbox}{FUTURE DIRECTIONS}
+\footnotesize
+\begin{itemize}
+  \item \textbf{Edge AI / TinyML:} INT8/INT4 quantization, pruning,
+    knowledge distillation, hardware-aware NAS.
+  \item \textbf{3D \& Multi-Modal:} camera--LiDAR fusion, Bird's-Eye
+    View (BEV) representations for autonomous driving.
+  \item \textbf{Open-Vocabulary Detection:} language-supervised
+    grounding (GLIP, Grounding DINO) for novel categories.
+  \item \textbf{Deployment-Aware Design:} FP16/INT8 inference,
+    calibrated thresholds, domain-shift robustness.
+\end{itemize}
+\end{sectionbox}
+
+\begin{sectionbox}{SELECTED REFERENCES}
+\scriptsize
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}ll@{}}
+\textbf{1.} & Viola \& Jones, CVPR 2001 / IJCV 2004.              \\
+\textbf{2.} & Dalal \& Triggs, CVPR 2005.                         \\
+\textbf{3.} & Felzenszwalb \textit{et al.}, PAMI 2010.            \\
+\textbf{4.} & Girshick \textit{et al.}\ (R-CNN), CVPR 2014.      \\
+\textbf{5.} & Girshick (Fast R-CNN), ICCV 2015.                   \\
+\textbf{6.} & Ren \textit{et al.}\ (Faster R-CNN), NeurIPS 2015. \\
+\textbf{7.} & Redmon \textit{et al.}\ (YOLO), CVPR 2016.         \\
+\textbf{8.} & Liu \textit{et al.}\ (SSD), ECCV 2016.             \\
+\textbf{9.} & Lin \textit{et al.}\ (Focal Loss), ICCV 2017.      \\
+\textbf{10.}& Carion \textit{et al.}\ (DETR), ECCV 2020.         \\
+\textbf{11.}& Liu \textit{et al.}\ (Swin), ICCV 2021.            \\
+\textbf{12.}& Jocher \textit{et al.}\ (YOLOv8), Ultralytics 2023.\\
+\end{tabular}
+\end{sectionbox}
+
+\end{multicols}
+
+\end{document}

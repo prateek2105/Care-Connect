@@ -88,6 +88,28 @@ npm start
 
 ---
 
+## Object Detection Research Poster
+
+This repository also contains a single-page, two-column academic poster on
+object detection (`poster_2col.tex`), summarising the evolution from
+hand-crafted features to transformer-based detectors.
+
+### Poster file
+- **`poster_2col.tex`** – single-page A4, two-column LaTeX poster
+- **`object_detection_2.tex`** – full multi-page IEEEtran conference paper
+
+### Compiling the poster
+Requires a standard TeX Live installation (texlive-latex-extra,
+texlive-fonts-recommended, texlive-science).
+
+```sh
+pdflatex poster_2col.tex
+```
+
+Run once (no bibliography pass needed); output is `poster_2col.pdf`.
+
+---
+
 ## License
 MIT
 
