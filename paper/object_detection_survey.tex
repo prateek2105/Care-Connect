@@ -1,0 +1,340 @@
+% =========================================================
+% IEEE Two-Column Conference Paper
+% Title: From Hand-Crafted Heuristics to Learned Representations:
+%        A Survey of Object Detection Paradigm Shifts
+% Format: IEEEtran, two-column conference style
+% =========================================================
+
+\documentclass[conference]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{booktabs}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\begin{document}
+
+% ---------------------------------------------------------
+% Title and Author Block
+% ---------------------------------------------------------
+\title{From Hand-Crafted Heuristics to Learned Representations:\\
+A Survey of Object Detection Paradigm Shifts}
+
+\author{
+  \IEEEauthorblockN{Author Name}
+  \IEEEauthorblockA{
+    \textit{Department of Computer Science}\\
+    \textit{University Name}\\
+    City, Country\\
+    author@university.edu
+  }
+}
+
+\maketitle
+
+% ---------------------------------------------------------
+% Abstract
+% ---------------------------------------------------------
+\begin{abstract}
+Automated object detection---the task of simultaneously localizing
+and classifying instances of semantic categories within an image---has
+undergone a fundamental transformation over the past two decades.
+Prior to 2012, practitioners relied on carefully constructed feature
+descriptors and statistical classifiers that encoded domain knowledge
+about edges, textures, and spatial arrangements.
+The widespread adoption of deep convolutional neural networks after
+2012 displaced this paradigm almost entirely, replacing hand-crafted
+pipelines with hierarchical feature learning end-to-end.
+This survey traces that transition in three phases:
+(i) the classical era of Viola-Jones, HOG+SVM, and deformable
+part-based models; (ii) the first wave of deep-learning detectors
+anchored by region proposals; and (iii) the single-pass architectures
+that brought real-time performance to competitive accuracy.
+We analyze the technical motivations behind each phase shift,
+identify the bottlenecks that necessitated the next advance, and
+discuss the benchmark trajectories that quantify the gains.
+\end{abstract}
+
+\begin{IEEEkeywords}
+object detection, convolutional neural networks, Viola-Jones,
+histogram of oriented gradients, deformable part models,
+deep learning, PASCAL VOC, image recognition
+\end{IEEEkeywords}
+
+% =========================================================
+% PAGE 1 --- Introduction
+% =========================================================
+\section{Introduction}
+\label{sec:intro}
+
+Object detection is among the most demanding problems in computer
+vision because it couples two distinct challenges: determining
+\emph{where} objects appear in an image (localization) and deciding
+\emph{what} those objects are (classification).
+A detector must generalize across wide intra-class variation---the
+same category can span orders of magnitude in scale, exhibit
+dramatic pose change, and appear under partial occlusion or
+adverse lighting.
+
+Early attempts at solving detection focused on specific,
+well-constrained categories such as human faces and pedestrians,
+for which it was feasible to enumerate the relevant visual cues by
+hand.
+Researchers encoded these cues as feature vectors computed over
+image patches, then trained shallow classifiers to separate positive
+from negative examples in the resulting feature space.
+This strategy, though effective for narrow domains, struggled as
+the breadth of target categories expanded.
+
+The introduction of standardized benchmarks transformed the field
+into an empirical discipline.
+The PASCAL Visual Object Classes challenge \cite{everingham2010pascal},
+launched in 2005, defined a canonical evaluation protocol---mean
+Average Precision (mAP) across twenty categories---that allowed
+direct, reproducible comparison of detection systems.
+Year-on-year incremental improvements under PASCAL VOC revealed
+both the remarkable ingenuity of classical engineering and its
+structural ceiling.
+
+That ceiling was shattered in 2012 when Krizhevsky \emph{et al.}
+demonstrated that a deep convolutional network trained on ImageNet
+could learn feature representations substantially more powerful than
+anything hand-designed \cite{krizhevsky2012imagenet}.
+Within two years, Girshick \emph{et al.} adapted this insight to
+detection through the Region-based CNN (R-CNN) framework
+\cite{girshick2014rich}, establishing deep features as the new
+backbone of high-accuracy detection.
+Subsequent architectures---Faster R-CNN \cite{ren2015faster},
+SSD \cite{liu2016ssd}, and YOLO \cite{redmon2016you}---refined
+the efficiency and end-to-end trainability of these deep pipelines,
+culminating in detectors that operate in real time at accuracies
+that would have seemed unreachable in the pre-deep-learning era.
+
+The remainder of this paper is organized as follows.
+Section~\ref{sec:traditional} examines the classical detection
+methods and their underlying assumptions.
+Section~\ref{sec:deep} surveys the deep-learning-based detectors
+that replaced them.
+Section~\ref{sec:analysis} offers a comparative analysis of the
+two eras, and Section~\ref{sec:conclusion} draws broader conclusions
+about the nature of representation learning in computer vision.
+
+% =========================================================
+% PAGE 2 --- Foundations of Computer Vision (Traditional Methods)
+% =========================================================
+\section{Foundations of Computer Vision:\\Traditional Methods}
+\label{sec:traditional}
+
+Before gradient-based feature learning became viable, detection
+systems were constructed around two separable design decisions:
+how to represent a candidate region as a numeric vector, and
+how to discriminate positive from negative vectors.
+Three methodological families---each addressing a distinct category
+and scale of problem---defined the pre-2012 landscape.
+
+% ---------------------------------------------------------
+\subsection{The Viola-Jones Detection Framework}
+\label{subsec:vj}
+
+The framework introduced by Viola and Jones
+\cite{viola2001rapid,viola2004robust} represented a watershed
+moment for face detection.
+Its central contribution was not a single algorithmic idea but
+an integrated architecture that made real-time performance
+achievable on the hardware of 2001.
+
+\subsubsection*{Haar-like Rectangular Features}
+
+The feature vocabulary of the framework consists of
+\emph{Haar-like features}---difference-of-rectangle computations
+evaluated at specific positions and scales within a detection
+window \cite{lienhart2002extended}.
+A Haar-like feature $h_{j}$ anchored at position $(x, y)$ with
+width $w$ and height $h$ is computed as:
+\begin{equation}
+  h_{j}(x,y,w,h) = \sum_{(i,k)\in R_{+}(x,y,w,h)} I(i,k)
+                 - \sum_{(i,k)\in R_{-}(x,y,w,h)} I(i,k),
+  \label{eq:haar}
+\end{equation}
+where $R_{+}(x,y,w,h)$ and $R_{-}(x,y,w,h)$ denote the white and
+grey rectangular sub-regions determined by the anchor parameters,
+and $I(i,k)$ is the pixel intensity at location $(i,k)$.
+Enumerating all possible positions, scales, and orientations
+yields over 160,000 distinct features for a $24 \times 24$ window.
+
+\subsubsection*{Integral Image Acceleration}
+
+Evaluating even a small fraction of those features naively would
+be prohibitively expensive.
+The \emph{integral image} (also called a summed-area table)
+transforms the computation so that any rectangular sum requires
+exactly four memory lookups, regardless of rectangle size.
+Formally, the integral image $\text{ii}(x,y)$ at position $(x,y)$
+accumulates all pixel values above and to the left:
+\begin{equation}
+  \text{ii}(x,y) = \sum_{x' \leq x,\; y' \leq y} I(x', y').
+  \label{eq:ii}
+\end{equation}
+This constant-time summation is what allows the framework to
+evaluate thousands of features per window with low latency.
+
+\subsubsection*{AdaBoost Feature Selection and Cascade}
+
+Because evaluating all features at every scale and position
+remains costly, Viola and Jones apply AdaBoost
+\cite{freund1997decision} to select a small, highly discriminative
+subset, forming a \emph{strong classifier} from a weighted
+combination of weak decision stumps.
+These strong classifiers are then arranged in an \emph{attentional
+cascade}: each stage rejects clear negatives early, so that the
+computationally expensive later stages are invoked only for
+promising candidate regions.
+In practice, over 99.9\% of sub-windows are discarded by the
+early stages, yielding detection speeds that matched or exceeded
+real-time requirements at the time of publication.
+
+% ---------------------------------------------------------
+\subsection{Histograms of Oriented Gradients with SVM}
+\label{subsec:hog}
+
+Pedestrian detection introduced challenges absent from face
+detection: highly variable clothing, articulated limb positions,
+and a much wider range of aspect ratios.
+Dalal and Triggs addressed these challenges through the
+\emph{Histogram of Oriented Gradients} (HOG) descriptor
+\cite{dalal2005histograms}, which encodes the local distribution
+of gradient directions rather than absolute pixel intensities.
+
+\subsubsection*{Gradient Computation and Spatial Binning}
+
+Given an image patch, the spatial gradient magnitude
+$|\nabla I(x,y)|$ and orientation $\theta(x,y)$ are computed at
+every pixel using finite-difference filters.
+The detection window is divided into a grid of small spatial
+\emph{cells} (typically $8 \times 8$ pixels), and within each
+cell the gradient orientations are soft-binned into a histogram
+of $K$ orientation channels (commonly $K=9$, spanning $0^\circ$
+to $180^\circ$ unsigned).
+Adjacent cells are grouped into larger \emph{blocks}
+($2 \times 2$ cells), and each block histogram is
+$\ell_2$-normalized to suppress the effect of local illumination
+changes.
+The concatenation of all normalized block histograms forms the
+final HOG descriptor.
+
+\subsubsection*{Linear SVM Classification}
+
+The high-dimensional HOG vector is fed to a linear Support Vector
+Machine trained to produce a binary pedestrian/non-pedestrian
+decision.
+The SVM maximises the margin between the hyperplane separating
+positive training windows from hard-negative examples mined from
+background imagery.
+Dalal and Triggs reported a miss rate below 10\% at $10^{-4}$
+false positives per window on the INRIA dataset, far surpassing
+competing descriptors of the era.
+The coupling of HOG with a linear SVM became the canonical
+pedestrian detection pipeline for the following several years.
+
+% ---------------------------------------------------------
+\subsection{Deformable Part-Based Models}
+\label{subsec:dpm}
+
+Even with rich gradient features, single rigid templates
+proved insufficient for categories exhibiting structural
+deformation---animals in motion, bicycles at varying viewing
+angles, or people in non-canonical poses.
+Felzenszwalb \emph{et al.} addressed this through the
+\emph{Deformable Part-based Model} (DPM)
+\cite{felzenszwalb2010object,felzenszwalb2008discriminatively},
+which represents an object as a coarse root filter combined with
+a set of higher-resolution part filters positioned at learned
+offsets from the root.
+
+\subsubsection*{Mixture Models and Latent SVM}
+
+Each object category is described by a mixture of $K$ component
+models, where each component captures a specific viewpoint or
+configuration (e.g., a frontal versus profile view of a car).
+The part filters and their spatial deformation costs are jointly
+learned using a \emph{Latent SVM} (LSVM), which treats part
+positions as latent variables.
+The LSVM objective alternates between fixing latent assignments
+to compute supergradients and re-estimating classifier weights,
+converging to a locally optimal set of filter templates and
+deformation penalties.
+
+\subsubsection*{Scoring and Detection}
+
+At test time, the score of a candidate bounding box is computed
+as the root filter response plus the maximum over all valid
+part placements of the sum of part filter responses minus
+deformation penalties, with $n$ denoting the total number of
+part filters:
+\begin{equation}
+  S(\mathbf{p}) = F_0 \cdot \phi(I, p_0)
+    + \sum_{i=1}^{n}\bigl[F_i \cdot \phi(I,p_i)
+    - d_i \cdot \psi(p_0,p_i)\bigr],
+  \label{eq:dpm}
+\end{equation}
+where $F_0$ is the root filter, $F_i$ are the $n$ part filters,
+$\phi(I, p)$ denotes the HOG feature vector at position $p$,
+$d_i$ encodes the quadratic deformation cost, and
+$\psi(p_0, p_i)$ measures spatial displacement.
+DPM dominated the PASCAL VOC leaderboard from 2008 through
+roughly 2012, when deep features began to supersede it.
+
+% ---------------------------------------------------------
+\subsection{Limitations of Hand-Crafted Feature Pipelines}
+\label{subsec:limits}
+
+Despite representing the best engineering efforts of their era,
+the classical methods described above share a fundamental
+architectural constraint: the feature representation is
+predetermined by human designers rather than inferred from
+data.
+
+Haar-like features express pairwise intensity contrasts but
+carry no explicit model of curvature, symmetry, or high-order
+texture.
+HOG captures local gradient statistics yet aggregates them
+over fixed spatial grids that cannot adapt to object boundaries.
+DPM part filters, though learned from examples, are still
+linear filters applied to hand-crafted HOG maps, so their
+expressive capacity is bounded by the underlying descriptor.
+
+Collectively, these representations enforce an \emph{inductive
+bias} that aligns well with the specific categories for which
+they were designed but generalises poorly beyond them.
+The result was a hard ceiling in achievable detection accuracy:
+systems trained on PASCAL VOC plateaued near 40--45\% mAP
+despite years of incremental refinement, because no amount of
+classifier tuning could compensate for the descriptive gaps
+inherent in manually defined feature spaces.
+The inability to compose low-level filters into abstract
+semantic representations---capturing, say, the concept of a
+partially occluded bicycle wheel at an arbitrary viewing
+angle---limited detection precision in precisely the situations
+that matter most in real-world deployment.
+This limitation set the stage for a fundamentally different
+approach: end-to-end learning of hierarchical representations
+directly from labelled image data, which is the subject of
+the following section.
+
+% =========================================================
+% References
+% =========================================================
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
