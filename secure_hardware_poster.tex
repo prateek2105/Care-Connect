@@ -6,7 +6,7 @@
 \documentclass[final]{beamer}
 
 % ---------- poster geometry ----------
-\usepackage[orientation=portrait,size=a1,scale=1.18]{beamerposter}
+\usepackage[orientation=portrait,size=a1,scale=1.0]{beamerposter}
 
 % ---------- general packages ----------
 \usepackage[utf8]{inputenc}
@@ -16,7 +16,6 @@
 \usepackage{xcolor}
 \usepackage{booktabs}       % professional table rules
 \usepackage{array}          % extended column definitions
-\usepackage{multicol}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,shapes.geometric,backgrounds,fit}
 \usepackage{pgfplots}
@@ -33,7 +32,6 @@
 \definecolor{DarkGray}{HTML}{2C2C2C}
 \definecolor{AlertRed}{HTML}{C0392B}
 \definecolor{GreenOK}{HTML}{1A7A4A}
-\definecolor{YellowHL}{HTML}{F39C12}
 
 % ============================================================
 % BEAMER THEME OVERRIDES
@@ -57,7 +55,7 @@
 
 % ---- headline (title bar) ----
 \setbeamertemplate{headline}{
-  \begin{beamercolorbox}[wd=\paperwidth,ht=9cm,dp=0.5cm,
+  \begin{beamercolorbox}[wd=\paperwidth,ht=8cm,dp=0.5cm,
                          leftskip=1.5cm,rightskip=1.5cm]{headline}
     \vskip1.2cm
     {\usebeamerfont{headline title}%
@@ -95,7 +93,7 @@
                          vmode]{block body}%
     \usebeamerfont{block body}\vskip0.3ex
 }
-\setbeamertemplate{block end}{\vskip0.5ex\end{beamercolorbox}\vskip0.6cm}
+\setbeamertemplate{block end}{\vskip0.5ex\end{beamercolorbox}\vskip0.4cm}
 
 \setbeamertemplate{block alerted begin}{
   \begin{beamercolorbox}[rounded=true,shadow=false,leftskip=0.5em,
@@ -107,7 +105,7 @@
                          vmode]{block body alerted}%
     \usebeamerfont{block body}\vskip0.3ex
 }
-\setbeamertemplate{block alerted end}{\vskip0.5ex\end{beamercolorbox}\vskip0.6cm}
+\setbeamertemplate{block alerted end}{\vskip0.5ex\end{beamercolorbox}\vskip0.4cm}
 
 \setbeamertemplate{block example begin}{
   \begin{beamercolorbox}[rounded=true,shadow=false,leftskip=0.5em,
@@ -119,19 +117,19 @@
                          vmode]{block body example}%
     \usebeamerfont{block body}\vskip0.3ex
 }
-\setbeamertemplate{block example end}{\vskip0.5ex\end{beamercolorbox}\vskip0.6cm}
+\setbeamertemplate{block example end}{\vskip0.5ex\end{beamercolorbox}\vskip0.4cm}
 
 % ============================================================
 \begin{document}
 \begin{frame}[t]
 
 % ============================================================
-% MAIN CONTENT — three columns
+% MAIN CONTENT — two columns
 % ============================================================
 \begin{columns}[t,totalwidth=\linewidth]
 
 %% ─── COLUMN 1 ────────────────────────────────────────────
-\begin{column}{0.32\linewidth}
+\begin{column}{0.49\linewidth}
 
   % ---- Why Secure Hardware? ----
   \begin{block}{1 \; Why Secure Hardware?}
@@ -181,7 +179,7 @@
     \centering
     \begin{tikzpicture}[
         node distance=0.55cm,
-        box/.style={draw, rounded corners=4pt, minimum width=5.8cm,
+        box/.style={draw, rounded corners=4pt, minimum width=8.5cm,
                     minimum height=0.9cm, font=\small\bfseries,
                     align=center},
         arrow/.style={-{Stealth[length=4pt]}, thick, color=AccentTeal}
@@ -198,17 +196,12 @@
     \end{tikzpicture}
   \end{block}
 
-\end{column}
-
-%% ─── COLUMN 2 ────────────────────────────────────────────
-\begin{column}{0.35\linewidth}
-
   % ---- Key Technologies ----
   \begin{block}{3 \; Key Secure Chip Technologies}
     \small
     \renewcommand{\arraystretch}{1.25}
-    \begin{tabular}{>{\bfseries\color{PrimaryBlue}}p{3.4cm}
-                    p{8.1cm}}
+    \begin{tabular}{>{\bfseries\color{PrimaryBlue}}p{4.0cm}
+                    p{12.0cm}}
       \toprule
       Technology & Architecture \& Function \\
       \midrule
@@ -236,12 +229,17 @@
     \end{tabular}
   \end{block}
 
+\end{column}
+
+%% ─── COLUMN 2 ────────────────────────────────────────────
+\begin{column}{0.49\linewidth}
+
   % ---- Threat Landscape ----
   \begin{alertblock}{4 \; Threat Landscape \& Countermeasures}
     \small
     \renewcommand{\arraystretch}{1.2}
-    \begin{tabular}{>{\bfseries\color{AlertRed}}p{3.0cm}
-                    p{4.0cm}  p{4.6cm}}
+    \begin{tabular}{>{\bfseries\color{AlertRed}}p{3.2cm}
+                    p{5.5cm}  p{6.0cm}}
       \toprule
       Attack & Mechanism & Countermeasure \\
       \midrule
@@ -271,29 +269,25 @@
     \begin{tikzpicture}[
         node distance=0.45cm and 0.6cm,
         atk/.style={draw=AlertRed,  fill=AlertRed!15,  rounded corners=3pt,
-                    minimum width=3.4cm, minimum height=0.75cm,
-                    font=\small, align=center},
-        cnt/.style={draw=GreenOK,   fill=GreenOK!15,   rounded corners=3pt,
                     minimum width=3.6cm, minimum height=0.75cm,
                     font=\small, align=center},
+        cnt/.style={draw=GreenOK,   fill=GreenOK!15,   rounded corners=3pt,
+                    minimum width=3.8cm, minimum height=0.75cm,
+                    font=\small, align=center},
         chip/.style={draw=PrimaryBlue, fill=PrimaryBlue!20, rounded corners=5pt,
-                     minimum width=3.4cm, minimum height=3.8cm,
+                     minimum width=3.6cm, minimum height=3.8cm,
                      font=\small\bfseries, align=center},
         arr/.style={-{Stealth[length=4pt]}, thick}
       ]
-      % chip in center
       \node[chip] (chip) {Secure\\Hardware\\Chip};
-      % attacks on left
-      \node[atk, left=1.8cm of chip, yshift=1.2cm]  (a1) {Side-Channel};
-      \node[atk, left=1.8cm of chip, yshift=0.4cm]  (a2) {Fault Injection};
-      \node[atk, left=1.8cm of chip, yshift=-0.4cm] (a3) {Probing};
-      \node[atk, left=1.8cm of chip, yshift=-1.2cm] (a4) {HW Trojans};
-      % countermeasures on right
-      \node[cnt, right=1.8cm of chip, yshift=1.2cm]  (c1) {Const-time Exec.};
-      \node[cnt, right=1.8cm of chip, yshift=0.4cm]  (c2) {Redundancy};
-      \node[cnt, right=1.8cm of chip, yshift=-0.4cm] (c3) {Active Shielding};
-      \node[cnt, right=1.8cm of chip, yshift=-1.2cm] (c4) {Logic Testing};
-      % arrows
+      \node[atk, left=2.0cm of chip, yshift=1.2cm]  (a1) {Side-Channel};
+      \node[atk, left=2.0cm of chip, yshift=0.4cm]  (a2) {Fault Injection};
+      \node[atk, left=2.0cm of chip, yshift=-0.4cm] (a3) {Probing};
+      \node[atk, left=2.0cm of chip, yshift=-1.2cm] (a4) {HW Trojans};
+      \node[cnt, right=2.0cm of chip, yshift=1.2cm]  (c1) {Const-time Exec.};
+      \node[cnt, right=2.0cm of chip, yshift=0.4cm]  (c2) {Redundancy};
+      \node[cnt, right=2.0cm of chip, yshift=-0.4cm] (c3) {Active Shielding};
+      \node[cnt, right=2.0cm of chip, yshift=-1.2cm] (c4) {Logic Testing};
       \foreach \a/\c in {a1/c1, a2/c2, a3/c3, a4/c4}{
         \draw[arr, color=AlertRed]  (\a.east)  -- (chip.west|-\a.east);
         \draw[arr, color=GreenOK]   (chip.east|-\c.west) -- (\c.west);
@@ -301,47 +295,34 @@
     \end{tikzpicture}
   \end{block}
 
-\end{column}
-
-%% ─── COLUMN 3 ────────────────────────────────────────────
-\begin{column}{0.30\linewidth}
-
   % ---- Future Frontiers ----
   \begin{exampleblock}{5 \; Future Frontiers}
     \textbf{\color{GreenOK}Post-Quantum Cryptography (PQC)}\\
-    New hardware accelerators optimised for lattice-based and other
-    quantum-resistant primitives (NIST PQC standards: CRYSTALS-Kyber,
-    CRYSTALS-Dilithium) are being embedded directly in secure chips to
-    maintain performance parity.
+    Hardware accelerators for NIST PQC standards (CRYSTALS-Kyber,
+    CRYSTALS-Dilithium) are being embedded in secure chips to maintain
+    performance parity against quantum threats.
 
     \medskip
     \textbf{\color{GreenOK}AI-Driven Anomaly Monitoring}\\
     Embedded ML models analyse real-time on-chip telemetry (power
-    profiles, bus activity) to detect subtle anomalies indicative of
-    advanced side-channel or fault-injection campaigns.
+    profiles, bus activity) to detect subtle side-channel or
+    fault-injection campaigns before data is compromised.
 
     \medskip
-    \textbf{\color{GreenOK}Secure Chiplets}\\
-    As semiconductor manufacturing shifts toward multi-die assemblies,
-    securing inter-chiplet communication fabrics (e.g., UCIe links)
-    becomes critical to preserve the trust boundary.
+    \textbf{\color{GreenOK}Secure Chiplets \& Self-Healing Hardware}\\
+    Multi-die chiplet assemblies require secured inter-chiplet fabrics
+    (e.g., UCIe). Adaptive circuits introduce deliberate jitter when
+    attacks are detected, preventing leakage without system shutdown.
 
     \medskip
     \textbf{\color{GreenOK}Blockchain-Based Device Identity}\\
-    Decentralised trust models anchor device identity to PUF-derived
-    hardware fingerprints registered on distributed ledgers, enabling
-    scalable IoT authentication without centralised PKI.
-
-    \medskip
-    \textbf{\color{GreenOK}Self-Healing Hardware}\\
-    Adaptive circuits dynamically alter clock rates, execution paths,
-    or introduce deliberate jitter when an ongoing attack is detected,
-    preventing data leakage without system shutdown.
+    PUF-derived hardware fingerprints registered on distributed ledgers
+    enable scalable IoT authentication without centralised PKI.
   \end{exampleblock}
 
   % ---- Key Takeaways ----
   \begin{block}{6 \; Key Takeaways}
-    \begin{itemize}[leftmargin=1.2em, itemsep=0.5ex]
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.4ex]
       \item[\color{PrimaryBlue}\textbullet]
         Software security alone is insufficient against physical
         adversaries; \textbf{hardware roots of trust} are essential.
@@ -351,15 +332,13 @@
         enterprise devices.
       \item[\color{PrimaryBlue}\textbullet]
         Side-channel and fault-injection attacks exploit the physics
-        of computation; countermeasures must be co-designed with the
-        silicon.
+        of computation; countermeasures must be co-designed with silicon.
       \item[\color{PrimaryBlue}\textbullet]
         PUFs offer a compelling path to \emph{unclonable} device
         identity rooted in manufacturing randomness.
       \item[\color{PrimaryBlue}\textbullet]
         The convergence of PQC, AI monitoring, and chiplet
-        architectures defines the next decade of secure hardware
-        research.
+        architectures defines the next decade of secure hardware research.
     \end{itemize}
   \end{block}
 
@@ -369,8 +348,8 @@
     \begin{tikzpicture}
       \begin{axis}[
           ybar,
-          width=8.5cm, height=5.5cm,
-          bar width=0.45cm,
+          width=13cm, height=6cm,
+          bar width=0.6cm,
           ylabel={Relative HW Cost (a.u.)},
           ylabel style={font=\scriptsize},
           symbolic x coords={AES-256, RSA-2048, ECC-256,
