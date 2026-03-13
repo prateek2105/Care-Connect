@@ -9,6 +9,7 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{hyperref}
+\usepackage{balance}
 % --- Figures / diagrams ---
 \usepackage{tikz}
 \usetikzlibrary{positioning, arrows.meta, shapes.geometric}
@@ -131,6 +132,35 @@ positions itself on the speed--precision curve, what compromises it
 accepts, and which architectural ideas attempt to move the frontier
 rather than simply choosing one end of the trade-off.
 
+% --- Fig 1: Detection output overview ---
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[font=\footnotesize, scale=0.78]
+  % Image frame
+  \draw[thick, fill=gray!12] (0,0) rectangle (4.8,3.4);
+  % Silhouette: person
+  \fill[gray!45, rounded corners=3pt] (0.35,0.5) rectangle (1.65,3.1);
+  % Silhouette: car
+  \fill[gray!55, rounded corners=2pt] (2.1,0.4) rectangle (4.5,2.1);
+  % Bounding box: person
+  \draw[red, very thick] (0.35,0.5) rectangle (1.65,3.1);
+  \node[fill=red, text=white, font=\bfseries\scriptsize,
+        inner sep=1.5pt, anchor=south west] at (0.35,3.1)
+        {Person~~~0.92};
+  % Bounding box: car
+  \draw[blue, very thick] (2.1,0.4) rectangle (4.5,2.1);
+  \node[fill=blue, text=white, font=\bfseries\scriptsize,
+        inner sep=1.5pt, anchor=south west] at (2.1,2.1)
+        {Car~~~0.88};
+  % Image label
+  \node[below, font=\scriptsize\itshape] at (2.4,-0.2) {Input image};
+\end{tikzpicture}
+\caption{Object detection output: each detected instance receives a
+class label, a confidence score, and a bounding box defining its
+spatial extent. Detection is the joint task of \emph{classification}
+(``what?'') and \emph{localization} (``where?'').}
+\label{fig:det_output}
+\end{figure}
 
 % ============================================================
 % PAGE 2 — THE PRE-DEEP LEARNING ERA (TRADITIONAL METHODS)
@@ -175,6 +205,43 @@ more expressive and processed only the surviving candidates.
 This cascade structure directly targeted runtime constraints
 and remains conceptually influential in modern ``early-exit''
 and pruning strategies.
+
+% --- Fig 2: Viola--Jones attentional cascade ---
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  stg/.style={draw, rounded corners=2pt, minimum width=0.95cm,
+              minimum height=0.65cm, align=center, fill=blue!8},
+  rej/.style={draw, rounded corners=2pt, minimum width=0.85cm,
+              minimum height=0.4cm,  align=center, fill=red!10,
+              font=\scriptsize, text=red!80!black},
+  arr/.style={-{Stealth[length=4pt]}, thick}
+]
+  \node[stg]                (w)  at (0,0)   {Window};
+  \node[stg]                (s1) at (1.55,0){Stage 1};
+  \node[stg]                (s2) at (3.1,0) {Stage 2};
+  \node[stg]                (s3) at (4.65,0){Stage $n$};
+  \node[stg, fill=green!15] (d)  at (6.2,0) {Accept};
+  \node[rej] (r1) at (1.55,-1.1){Reject};
+  \node[rej] (r2) at (3.1,-1.1) {Reject};
+  \node[rej] (r3) at (4.65,-1.1){Reject};
+  \draw[arr] (w)--(s1); \draw[arr] (s1)--(s2);
+  \draw[arr] (s2)--(s3); \draw[arr] (s3)--(d);
+  \draw[arr,red!70!black] (s1)--(r1);
+  \draw[arr,red!70!black] (s2)--(r2);
+  \draw[arr,red!70!black] (s3)--(r3);
+  % Complexity annotation
+  \draw[{Stealth[length=3pt]}-{Stealth[length=3pt]}, gray]
+      (1.05,-1.65) -- (5.15,-1.65)
+      node[midway, below, font=\scriptsize\itshape]
+      {increasing classifier complexity};
+\end{tikzpicture}
+\caption{Viola--Jones attentional cascade. Most candidate windows are
+rejected by cheap early stages; only survivors reach the later, more
+expressive classifiers, keeping average evaluation cost sub-linear.}
+\label{fig:cascade}
+\end{figure}
 
 \subsection{HOG + SVM: Gradient Structure for Pedestrian Detection}
 
@@ -415,6 +482,39 @@ $B_p$ and a ground-truth box $B_{gt}$, IoU is defined as
          {\text{Area}(B_p \cup B_{gt})}
     \label{eq:iou}
 \end{equation}
+
+% --- Fig 3: IoU visualization ---
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[font=\footnotesize, scale=0.88]
+  % Ground-truth box
+  \draw[blue, very thick] (0,0) rectangle (2.8,2.4);
+  \node[blue, font=\small] at (1.2,2.65)
+        {$B_{gt}$ (ground truth)};
+  % Predicted box (dashed, offset)
+  \draw[red, very thick, dashed] (0.85,-0.5) rectangle (3.65,1.8);
+  \node[red, font=\small] at (3.0,-0.75)
+        {$B_p$ (predicted)};
+  % Intersection fill
+  \begin{scope}
+    \clip (0,0) rectangle (2.8,2.4);
+    \fill[yellow!70, opacity=0.85] (0.85,-0.5) rectangle (3.65,1.8);
+  \end{scope}
+  % Intersection border
+  \draw[black, thick] (0.85,0) rectangle (2.8,1.8);
+  % Intersection label
+  \node[font=\bfseries\small] at (1.825,0.9)
+        {$B_p \!\cap\! B_{gt}$};
+  % Formula
+  \node[align=center, font=\small] at (1.825,-1.5)
+        {$\mathrm{IoU}=\dfrac{|B_p \cap B_{gt}|}{|B_p \cup B_{gt}|}$};
+\end{tikzpicture}
+\caption{IoU visualization. The shaded region is the intersection
+$B_p \cap B_{gt}$; the union covers all pixels inside either box.
+IoU$=1$ means perfect overlap; IoU$=0$ means no overlap.}
+\label{fig:iou_vis}
+\end{figure}
+
 IoU ranges from $0$ (no overlap) to $1$ (perfect alignment).
 It appears throughout the detection pipeline in two distinct
 roles.
@@ -500,6 +600,38 @@ parallelism. The cost is that training becomes sensitive to
 class imbalance (many background locations) and that early
 designs struggled with precise localization for small or
 crowded objects.
+
+% --- Fig 4: Two-stage vs. one-stage pipeline comparison ---
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize,
+  blk/.style={draw, rounded corners=2pt, text width=1.35cm,
+              minimum height=0.6cm, align=center, fill=blue!8},
+  arr/.style={-{Stealth[length=3.5pt]}, semithick}
+]
+%% ---- Two-stage (top row) ----
+\node[font=\footnotesize\bfseries] at (-0.1,2.85) {Two-Stage};
+\node[blk] (ti) at (0,2.3)   {Image};
+\node[blk] (tp) at (1.65,2.3){Region\\Proposals};
+\node[blk] (tr) at (3.3,2.3) {RoI\\Features};
+\node[blk, fill=green!15] (to) at (4.95,2.3){Class\\+ Box};
+\draw[arr] (ti)--(tp); \draw[arr] (tp)--(tr); \draw[arr] (tr)--(to);
+%% ---- One-stage (bottom row) ----
+\node[font=\footnotesize\bfseries] at (-0.1,1.05) {One-Stage};
+\node[blk] (oi) at (0,0.5)   {Image};
+\node[blk] (ob) at (1.9,0.5) {Backbone\\+ Neck};
+\node[blk, fill=green!15] (oo) at (3.8,0.5){Dense Class\\+ Box};
+\draw[arr] (oi)--(ob); \draw[arr] (ob)--(oo);
+%% Separator
+\draw[dashed, gray!60] (-0.7,1.65) -- (5.7,1.65);
+\end{tikzpicture}
+\caption{Two-stage vs.\ one-stage detection pipelines. Two-stage
+detectors generate proposals then classify each one; one-stage
+detectors skip proposals and predict class labels and box
+coordinates densely in a single forward pass.}
+\label{fig:pipeline_compare}
+\end{figure}
 
 \subsection{YOLOv1: Unified Grid-Based Prediction}
 
@@ -658,6 +790,47 @@ confusing backgrounds, and borderline localization scenarios.
 This made one-stage training far more competitive without
 reintroducing proposal stages.
 
+% --- Fig 5: Focal Loss vs. cross-entropy ---
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth, height=0.63\columnwidth,
+  xlabel={Model confidence $p_t$},
+  ylabel={Loss},
+  xmin=0, xmax=1, ymin=0, ymax=5,
+  xtick={0,0.2,0.4,0.6,0.8,1.0},
+  ytick={0,1,2,3,4,5},
+  grid=both,
+  grid style={line width=.1pt, draw=gray!20},
+  major grid style={line width=.2pt, draw=gray!35},
+  label style={font=\footnotesize},
+  ticklabel style={font=\footnotesize},
+  legend style={font=\footnotesize, at={(0.98,0.98)},
+                anchor=north east, draw=none, fill=white,
+                fill opacity=0.9},
+]
+\addplot[thick, black,              domain=0.02:0.995, samples=120]
+    {-ln(x)};
+\addlegendentry{CE~($\gamma{=}0$)}
+\addplot[thick, blue,  dashed,      domain=0.02:0.995, samples=120]
+    {-(1-x)^(0.5)*ln(x)};
+\addlegendentry{FL~($\gamma{=}0.5$)}
+\addplot[thick, red,   densely dotted, domain=0.02:0.995, samples=120]
+    {-(1-x)^2*ln(x)};
+\addlegendentry{FL~($\gamma{=}2$)}
+\addplot[thick, teal,  dashdotted,  domain=0.02:0.995, samples=120]
+    {-(1-x)^5*ln(x)};
+\addlegendentry{FL~($\gamma{=}5$)}
+\end{axis}
+\end{tikzpicture}
+\caption{Focal Loss vs.\ standard cross-entropy (CE) for several
+values of~$\gamma$. Increasing $\gamma$ progressively suppresses the
+loss for well-classified examples (high~$p_t$), directing gradient
+updates toward hard, misclassified cases.}
+\label{fig:focal_curve}
+\end{figure}
+
 \subsection{Evolution of the YOLO Family (v2 to v8)}
 
 In parallel with RetinaNet, the YOLO line evolved through a
@@ -784,6 +957,45 @@ prune.'' In practice, the DETR family also exposed new
 challenges, such as convergence speed and the computational
 cost of global attention on high-resolution feature maps, which
 motivated more efficient transformer designs for vision.
+
+% --- Fig 6: DETR architecture block diagram ---
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize,
+  blk/.style={draw, rounded corners=2pt, text width=1.15cm,
+              minimum height=0.65cm, align=center, fill=blue!8},
+  arr/.style={-{Stealth[length=3.5pt]}, semithick}
+]
+  % Nodes along top row
+  \node[blk]                  (img) at (0,0)   {Image};
+  \node[blk]                  (cnn) at (1.55,0){CNN\\Backbone};
+  \node[blk, fill=orange!20]  (enc) at (3.1,0) {Trans.\\Encoder};
+  \node[blk, fill=orange!20]  (dec) at (4.65,0){Trans.\\Decoder};
+  \node[blk, fill=green!15]   (ffn) at (6.2,0) {FFN\\Head};
+  % Object queries (below decoder)
+  \node[blk, fill=yellow!30]  (oq)  at (4.65,-1.25){Object\\Queries};
+  % Outputs (below FFN)
+  \node[align=center]         (out) at (6.2,-1.25){$N$ class\\+ box};
+  % Arrows
+  \draw[arr] (img)--(cnn);
+  \draw[arr] (cnn)--(enc);
+  \draw[arr] (enc)--(dec);
+  \draw[arr] (oq)--(dec);
+  \draw[arr] (dec)--(ffn);
+  \draw[arr] (ffn)--(out);
+  % Self-attention loop on encoder
+  \draw[arr, gray] (enc.north) arc[start angle=0, end angle=180,
+      x radius=0.5cm, y radius=0.3cm]
+      node[above, midway, font=\tiny, black]{self-attn};
+\end{tikzpicture}
+\caption{DETR architecture. A CNN extracts spatial features;
+positional encodings are added; a transformer encoder applies
+global self-attention; the decoder cross-attends $N$ learned
+object queries to encoder outputs; an FFN produces $N$
+(class, box) pairs directly, without anchors or NMS.}
+\label{fig:detr_arch}
+\end{figure}
 
 \subsection{Swin Transformers: Hierarchical Efficiency for Vision}
 
