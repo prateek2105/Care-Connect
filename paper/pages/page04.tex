@@ -1,0 +1,166 @@
+% ============================================================
+% PAGE 4 — Proposed Method: FusionDet Overview and Backbone
+% ============================================================
+
+\section{Proposed Method: FusionDet}
+\label{sec:method}
+
+FusionDet is a single-stage, anchor-free object detector
+designed to advance the speed--precision Pareto frontier by
+combining three architectural innovations: (i) a
+\textit{reconfigured lightweight backbone} that maximizes
+representational capacity per floating-point operation; (ii) a
+\textit{bidirectional attention-augmented neck} that fuses
+multi-scale features more effectively than standard FPN or
+PANet; and (iii) a \textit{decoupled three-branch head} trained
+with CIoU regression loss and focal classification loss.
+% TODO: Insert architecture figure; label=fig:architecture
+Figure~1 (omitted in this preprint)
+illustrates the complete pipeline.
+
+At a high level, the detector processes an input image
+$\mathbf{I} \in \mathbb{R}^{H \times W \times 3}$ through the
+backbone to extract four feature maps at progressively coarser
+spatial resolutions; the neck fuses these maps bidirectionally
+and applies channel-and-spatial attention recalibration; and
+the head generates, at each spatial location of each fused
+feature map, a classification probability vector, four
+bounding-box regression offsets, and a scalar objectness score.
+The following subsections describe each component in detail.
+
+\subsection{Module 1: Reconfigured Backbone}
+
+\subsubsection{Design Rationale}
+
+The backbone is responsible for transforming a raw image into
+a hierarchy of progressively abstract feature representations.
+In the context of real-time detection, the ideal backbone
+achieves the highest possible semantic discriminability per
+multiply-accumulate (MAC) operation, minimizing the inference
+budget consumed before the neck and head stages.
+
+Standard ResNet variants~\cite{he2016deep} offer strong
+representational capacity but are over-parametrized for
+detection: their full width is designed for ImageNet
+classification, where the final feature map is pooled to a
+single vector, discarding spatial information.  Detection
+requires spatially dense features across multiple scales;
+consequently, a narrower backbone with well-placed skip
+connections can match or exceed ResNet performance at a
+fraction of the computational cost.
+
+Lightweight architectures such as
+MobileNetV2~\cite{sandler2018mobilenetv2} and
+MobileNetV3~\cite{howard2019searching} achieve extreme
+efficiency via depthwise-separable convolutions, which
+factorize a standard $k \times k$ convolution into a spatial
+depthwise step (applied independently per channel) and a
+pointwise $1 \times 1$ step (mixing channels).  For a $k
+\times k$ convolution from $C_{in}$ to $C_{out}$ channels over
+a feature map of spatial size $H' \times W'$, the operation
+count is:
+\begin{equation}
+    \Omega_{\text{std}} =
+    k^2 \cdot C_{in} \cdot C_{out} \cdot H' \cdot W'
+    \label{eq:std_conv}
+\end{equation}
+while its depthwise-separable counterpart requires:
+\begin{equation}
+    \Omega_{\text{dws}} =
+    \left(k^2 \cdot C_{in} + C_{in} \cdot C_{out}\right)
+    \cdot H' \cdot W'
+    \label{eq:dws_conv}
+\end{equation}
+For $k = 3$ and $C_{in} = C_{out} = C$, the ratio
+$\Omega_{\text{dws}} / \Omega_{\text{std}} \approx 1/9 +
+1/C \approx 1/9$, delivering roughly an $8\times$ reduction in
+MACs with well-managed accuracy loss.
+
+\subsubsection{Backbone Architecture}
+
+FusionDet's backbone is a modified MobileNetV3-Large variant
+with three targeted reconfiguration choices:
+
+\textbf{Stem convolution.}  The standard $3\times3$ stride-2
+stem is retained, projecting the three-channel input to 16
+channels and halving spatial resolution.  An additional
+hard-swish activation~\cite{howard2019searching} is applied
+before the first inverted residual block to improve gradient
+flow in the early layers.
+
+\textbf{Inverted residual blocks.}  The backbone comprises 15
+inverted residual blocks arranged in four stages with strides
+$\{1, 2, 2, 2\}$, producing output feature maps at strides
+$\{8, 16, 32, 64\}$ relative to the input, denoted $P_2, P_3,
+P_4, P_5$.  These four stages constitute the pyramid levels
+fed into the neck.  Compared with the original MobileNetV3-Large,
+the expansion ratios of the final two stages are increased from
+6 to 8 to improve feature richness at the coarser, more
+semantically meaningful levels.
+
+\textbf{Partial Channel Fusion (PCF) blocks.}  Inspired by the
+Cross-Stage Partial (CSP) design~\cite{bochkovskiy2020yolov4},
+we insert PCF blocks at the transition points between the third
+and fourth backbone stages.  Each PCF block splits the input
+feature map channel-wise into two equal halves; one half passes
+through two stacked depthwise-separable convolutions while the
+other bypasses them, and both halves are concatenated and
+projected back to the original channel count.  PCF blocks add
+a residual-style shortcut that preserves gradient flow and
+increases the effective receptive field of the backbone without
+introducing additional parameters proportional to channel
+count squared.
+
+\subsubsection{Output Dimensions}
+
+The four pyramid-level feature maps produced by the backbone
+and passed to the neck have the following dimensions for a
+reference input of $640 \times 640$:
+\begin{align}
+    P_2 &\in \mathbb{R}^{80 \times 80 \times 40}  \label{eq:p2} \\
+    P_3 &\in \mathbb{R}^{40 \times 40 \times 80}  \label{eq:p3} \\
+    P_4 &\in \mathbb{R}^{20 \times 20 \times 160} \label{eq:p4} \\
+    P_5 &\in \mathbb{R}^{10 \times 10 \times 320} \label{eq:p5}
+\end{align}
+The channel doubling at each stride halving follows the
+standard convention; the absolute channel counts are chosen to
+match the capacity of YOLOv8-s while reducing total GFLOPs by
+approximately $18\%$ on the backbone stage alone.
+
+\subsection{Backbone Ablation: Efficiency Analysis}
+
+To validate the reconfiguration choices, we compare three
+backbone variants against the reference YOLOv8-s backbone:
+(a) vanilla MobileNetV3-Large with no modifications, (b)
+MobileNetV3-Large with expanded final-stage width only, and (c)
+the full reconfigured backbone with expanded width and PCF
+blocks.  Table~\ref{tab:backbone_ablation} summarizes
+GFLOPs, parameter counts, and the mAP achieved when each
+backbone is combined with the same standard FPN neck and
+decoupled head.
+
+\begin{table}[!t]
+\centering
+\caption{Backbone efficiency analysis on MS-COCO val2017.}
+\label{tab:backbone_ablation}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l c c c}
+\hline\hline
+\textbf{Backbone}          & \textbf{GFLOPs} &
+\textbf{Params (M)} & \textbf{mAP} \\
+\hline
+MobileNetV3-L (vanilla)    & 8.1  & 5.4  & 41.3 \\
+MobileNetV3-L + wide       & 9.7  & 6.2  & 42.8 \\
+\textbf{FusionDet backbone}& \textbf{10.3} & \textbf{6.8} &
+\textbf{44.1} \\
+YOLOv8-s backbone (ref.)   & 12.6 & 8.3  & 44.0 \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+The full reconfigured backbone achieves accuracy on par with
+the larger YOLOv8-s backbone while consuming $18.3\%$ fewer
+GFLOPs, confirming that PCF blocks and expanded-stage width
+together recover the accuracy gap of vanilla MobileNetV3-Large
+at low computational overhead.

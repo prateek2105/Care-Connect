@@ -1,0 +1,174 @@
+% ============================================================
+% PAGE 7 — Module 3: Detection Head and Optimized Loss Functions
+% ============================================================
+
+\subsection{Module 3: Detection Head and Optimized Loss
+Functions}
+
+The detection head is the terminal stage of the pipeline---the
+point at which abstract, multi-scale feature representations
+are decoded into the concrete set of bounding boxes, class
+labels, and confidence scores that constitute the detector's
+output.  FusionDet employs a \textit{decoupled head} topology
+in which classification and localization are handled by
+separate, parallel sub-networks rather than a single shared
+branch.  This decoupling, first systematized by
+YOLOX~\cite{ge2021yolox}, resolves a long-standing conflict in
+single-stage detector design: classification benefits from
+features that emphasize semantic discriminability, while
+regression benefits from features that preserve precise spatial
+gradients.  Forcing both tasks through a shared representation
+produces a compromise that is optimal for neither.
+
+\subsubsection{Head Architecture}
+
+For each pyramid level $l \in \{2,3,4,5\}$, the recalibrated
+feature map $\hat{\mathbf{N}}_{l}$ produced by the neck is fed
+into two lightweight branches operating in parallel:
+
+\textit{Classification branch.}  Two stacked $3\times3$
+depthwise-separable convolutions, each followed by batch
+normalization and SiLU activation, reduce the feature map to a
+tensor $\mathbf{O}_{\text{cls}}^{l} \in
+\mathbb{R}^{K \times H_l \times W_l}$, where $K$ is the number
+of object categories.  A sigmoid activation is applied
+element-wise to produce per-class probability maps.
+
+\textit{Regression branch.}  An identically structured pair of
+depthwise-separable convolutions produces a tensor
+$\mathbf{O}_{\text{reg}}^{l} \in
+\mathbb{R}^{4 \times H_l \times W_l}$ encoding the four
+bounding-box parameters $(x_c, y_c, w, h)$ in the center-size
+format defined in (\ref{eq:bbox}).
+
+\textit{Objectness branch.}  A single $1\times1$ convolution
+followed by sigmoid activation outputs a scalar objectness
+score $\mathbf{O}_{\text{obj}}^{l} \in
+\mathbb{R}^{1 \times H_l \times W_l}$ at each spatial
+location, indicating the likelihood that the location
+corresponds to the center of any object regardless of class.
+
+At inference time the final detection confidence for class $k$
+at location $(i,j)$ of level $l$ is the product:
+\begin{equation}
+    \hat{s}_{k,i,j}^{\,l} =
+    \mathbf{O}_{\text{obj}}^{l}(i,j) \;\cdot\;
+    \mathbf{O}_{\text{cls}}^{l}(k,i,j)
+    \label{eq:conf}
+\end{equation}
+Predictions from all four levels are concatenated, ranked by
+$\hat{s}$, and filtered through Non-Maximum Suppression (NMS)
+with an IoU threshold of $0.65$ to produce the final detection
+set $\mathcal{D}$.
+
+\subsubsection{Multi-Part Loss Formulation}
+
+Training the three-branch head requires a composite loss that
+simultaneously supervises classification accuracy, bounding-box
+quality, and objectness calibration.  The total training
+objective is:
+\begin{equation}
+    \mathcal{L}_{\text{total}} =
+    \lambda_{\text{cls}}\,\mathcal{L}_{\text{cls}}
+    \;+\;
+    \lambda_{\text{box}}\,\mathcal{L}_{\text{CIoU}}
+    \;+\;
+    \lambda_{\text{obj}}\,\mathcal{L}_{\text{obj}}
+    \label{eq:total_loss}
+\end{equation}
+where $\lambda_{\text{cls}}$, $\lambda_{\text{box}}$, and
+$\lambda_{\text{obj}}$ are scalar coefficients controlling the
+relative contribution of each term.  We set
+$\lambda_{\text{cls}} = 1.0$, $\lambda_{\text{box}} = 5.0$, and
+$\lambda_{\text{obj}} = 1.0$ following the weighting convention
+of~\cite{bochkovskiy2020yolov4}, validated through a
+hyperparameter sweep in our ablation study.
+
+\textbf{Classification loss.}  We adopt the binary
+cross-entropy variant of focal loss~\cite{lin2017focal} to
+address the severe foreground--background imbalance:
+\begin{equation}
+    \mathcal{L}_{\text{cls}} =
+    -\frac{1}{N_{\text{pos}}}
+    \sum_{i}\;
+    \alpha_{t}\,(1 - p_{t,i})^{\gamma}\,
+    \log(p_{t,i})
+    \label{eq:focal}
+\end{equation}
+where $p_{t,i}$ is the predicted probability for the true class
+of sample $i$, $\alpha_{t}$ is a per-class balancing factor,
+and $\gamma$ is the focusing parameter.  Setting $\gamma = 2.0$
+and $\alpha_{t} = 0.25$ causes the loss to down-weight the
+overwhelming majority of easy negative locations, concentrating
+gradient energy on the sparse, hard positives.
+
+\textbf{Objectness loss.}  The objectness branch is supervised
+with binary cross-entropy:
+\begin{equation}
+    \mathcal{L}_{\text{obj}} =
+    -\frac{1}{N}
+    \sum_{i}\Bigl[
+        y_{i}\log(\hat{o}_{i})
+        + (1-y_{i})\log(1-\hat{o}_{i})
+    \Bigr]
+    \label{eq:obj}
+\end{equation}
+where $\hat{o}_{i}$ is the predicted objectness score and
+$y_{i} \in \{0,1\}$ is the ground-truth label assigned via
+the SimOTA dynamic label assignment strategy~\cite{ge2021yolox}.
+
+\textbf{Bounding-box regression loss --- CIoU.}  FusionDet
+employs the \textit{Complete IoU} (CIoU) loss~\cite{zheng2020distance},
+which extends the basic IoU formulation along three
+complementary axes: overlap area, center-point distance, and
+aspect-ratio consistency:
+\begin{equation}
+    \mathcal{L}_{\text{CIoU}} =
+    1 - \text{IoU}
+    + \frac{\rho^{2}(\mathbf{b}_{p},\,\mathbf{b}_{gt})}{c^{2}}
+    + \alpha_{\text{ar}}\,v
+    \label{eq:ciou}
+\end{equation}
+
+\textit{Distance term.}
+$\rho(\mathbf{b}_{p},\mathbf{b}_{gt})$ is the Euclidean
+distance between the predicted and ground-truth box centers,
+and $c$ is the diagonal length of the smallest enclosing
+rectangle:
+\begin{equation}
+    \frac{\rho^{2}(\mathbf{b}_{p},\,\mathbf{b}_{gt})}{c^{2}}
+    = \frac{(x_c^{p} - x_c^{gt})^{2} +
+            (y_c^{p} - y_c^{gt})^{2}}
+           {c_{w}^{2} + c_{h}^{2}}
+    \label{eq:dist}
+\end{equation}
+This normalized penalty accelerates convergence when two boxes
+share little or no overlap, a regime in which the gradient of
+the raw IoU loss vanishes.
+
+\textit{Aspect-ratio consistency.}  The parameter $v$
+quantifies aspect-ratio discrepancy:
+\begin{equation}
+    v = \frac{4}{\pi^{2}}
+    \left(
+        \arctan\frac{w^{gt}}{h^{gt}}
+        - \arctan\frac{w^{p}}{h^{p}}
+    \right)^{\!2}
+    \label{eq:v}
+\end{equation}
+with the adaptive trade-off coefficient:
+\begin{equation}
+    \alpha_{\text{ar}} = \frac{v}{(1 - \text{IoU}) + v}
+    \label{eq:alpha_ar}
+\end{equation}
+so that aspect-ratio correction receives increasing weight as
+the overlap improves---a principled schedule that prevents the
+$v$ term from dominating early in training when the boxes are
+still poorly localized.
+
+Together, the three CIoU components ensure informative,
+non-vanishing gradients across the full spectrum of prediction
+quality, from grossly misaligned boxes to nearly perfect
+localizations, yielding faster convergence and tighter final
+bounding boxes than either smooth-$L_1$ or basic IoU loss
+alone~\cite{zheng2020distance}.

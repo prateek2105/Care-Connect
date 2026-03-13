@@ -1,0 +1,144 @@
+% ============================================================
+% PAGE 2 — Related Work: Traditional Computer Vision Methods
+% ============================================================
+
+\section{Related Work}
+\label{sec:related}
+
+The history of object detection divides cleanly into two eras:
+the \textit{classical} era characterized by hand-crafted
+feature representations evaluated within a sliding-window
+paradigm, and the \textit{deep-learning} era in which feature
+extraction and classification are learned jointly from data.
+This section reviews both, with emphasis on the design
+decisions that created or alleviated the speed--precision
+tension.
+
+\subsection{Classical Feature-Engineering Detectors}
+
+\subsubsection{Viola--Jones and Haar Cascades}
+
+The Viola--Jones detector~\cite{viola2001rapid} introduced
+three innovations that collectively enabled real-time face
+detection for the first time.  The integral image representation
+allowed rectangular Haar-like features to be computed in $O(1)$
+time regardless of size, transforming an otherwise
+computationally prohibitive feature extraction step into a
+constant-time lookup.  The AdaBoost learning algorithm
+selected a discriminative subset of features from a pool of
+over 160\,000 candidates, yielding a compact but highly
+effective classifier.  Most importantly, a cascade architecture
+organized these classifiers from least to most expensive,
+rejecting non-face windows at early stages before committing to
+expensive later evaluations.  The cascade structure established
+a fundamental principle that recurs throughout detection
+history: \textit{coarse-to-fine filtering}, wherein cheap but
+approximate tests gate access to more expensive but accurate
+ones.
+
+Despite its real-time throughput, Viola--Jones was narrowly
+specialized: it required frontal, upright face images and
+degraded sharply under occlusion, viewpoint change, or
+cluttered backgrounds.  Attempts to generalize the method to
+multi-class detection required training separate cascades for
+each category, and accuracy on articulated objects remained
+poor.
+
+\subsubsection{Histogram of Oriented Gradients}
+
+Dalal and Triggs~\cite{dalal2005histograms} proposed the
+Histogram of Oriented Gradients (HOG) descriptor as a
+rotationally tolerant, illumination-invariant feature for
+pedestrian detection.  A detection window is divided into
+overlapping spatial cells; within each cell, gradient
+magnitudes are accumulated into orientation bins to form a
+local histogram.  Cells are grouped into blocks and
+block-level histograms are L2-normalized to achieve contrast
+invariance.  The resulting descriptor is evaluated at every
+scale and position of a sliding window by a linear support
+vector machine (SVM), producing a dense response map from
+which detections are extracted by non-maximum suppression
+(NMS).
+
+HOG improved robustness to illumination and minor deformations
+relative to Haar features, but the sliding-window exhaustive
+search scheme imposed an $O(S^2)$ computational burden with
+respect to image scale factor $S$, making multi-scale detection
+expensive.  Furthermore, the fixed spatial pooling grid assumed
+rigid object geometry, precluding accurate localization of
+flexible or articulated objects.
+
+\subsubsection{Deformable Part Models}
+
+Felzenszwalb \textit{et al.}~\cite{felzenszwalb2010object}
+combined HOG-based appearance models with explicit geometric
+deformation models in the Deformable Part Model (DPM)
+framework.  Each object class is represented by a root filter
+covering the full object and a set of part filters covering
+discriminative regions; a latent SVM jointly learns filter
+weights and part displacement costs, allowing the model to
+score configurations in which parts deviate from their nominal
+positions.  DPM won the PASCAL VOC detection challenge from
+2007 to 2009, demonstrating superior performance on
+deformable categories such as people and bicycles.
+
+DPM's mixture models could represent multiple viewing aspects,
+partially addressing the viewpoint limitation of Viola--Jones
+and HOG.  However, inference remained slow---several seconds
+per image at competitive accuracy settings---because the
+matching over all feasible part placements involved solving a
+dynamic programming problem at each scale.  Moreover, the
+hand-crafted HOG features provided a ceiling on representational
+power that could not be raised without replacing the underlying
+feature extractor.
+
+\subsection{The Transition to Deep Learning}
+
+The ImageNet Large Scale Visual Recognition
+Challenge~\cite{krizhevsky2012imagenet} catalyzed the shift
+from hand-crafted to learned representations.  AlexNet reduced
+the top-5 classification error from $26.2\%$ to $15.3\%$---a
+margin so large it could not be attributed to algorithmic
+improvements alone---by demonstrating that deep CNNs with
+rectified linear units, dropout regularization, and GPU-accelerated
+training could learn richer, more transferable features than
+any previously designed descriptor.  The implications for
+detection were immediate: if CNN features dramatically
+outperformed HOG for classification, the same representations
+could be expected to raise the ceiling on detection accuracy.
+
+The challenge was architectural.  A classifier consumes an
+entire image and produces a single label; a detector must
+produce a variable-length set of boxes and labels, operating
+efficiently across widely varying object scales and densities.
+The following decade produced a series of architectures
+progressively reconciling these requirements, as detailed in
+the next section.
+
+\subsection{Anchor-Based and Anchor-Free Paradigms}
+
+A further axis of taxonomy cuts across both the two-stage and
+single-stage lineages: whether predictions are made relative
+to predefined \textit{anchor} boxes or directly in a
+\textit{anchor-free} manner.  Anchor-based methods---Faster
+R-CNN, SSD, YOLOv2 through YOLOv5---define a grid of reference
+boxes at each spatial location and predict offsets from these
+references.  Anchors reduce the regression problem to predicting
+small residuals, which eases learning, but introduce
+hyperparameters (aspect ratios, scales, stride) that must be
+tuned to each dataset and can misalign with the distribution of
+ground-truth boxes.
+
+Anchor-free methods---CornerNet~\cite{law2018cornernet},
+CenterPoint, FCOS---predict objects by detecting keypoints or
+directly regressing box parameters from each spatial location
+without reference boxes.  They eliminate anchor hyperparameters
+and avoid the label-assignment ambiguities that arise when
+multiple anchors overlap a single ground-truth box.  YOLOX
+\cite{ge2021yolox} demonstrated that an anchor-free
+reformulation of the YOLO architecture, combined with a
+decoupled head and a dynamic label assignment strategy
+(SimOTA), achieves higher mAP than anchor-based counterparts at
+comparable FPS, a finding that directly motivates the
+architectural choices of FusionDet described in
+Section~\ref{sec:method}.
