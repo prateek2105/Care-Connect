@@ -1,0 +1,393 @@
+\documentclass[10pt]{article}
+
+% =============================================================
+% PAGE & TYPOGRAPHY
+% =============================================================
+\usepackage[a0paper,landscape,margin=18mm]{geometry}
+\usepackage{times}
+\usepackage{microtype}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+
+% =============================================================
+% LAYOUT HELPERS
+% =============================================================
+\usepackage{multicol}
+\setlength{\columnsep}{14mm}
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=*,noitemsep,topsep=2pt}
+\setlist[enumerate]{leftmargin=*,noitemsep,topsep=2pt}
+
+% =============================================================
+% COLOR / BOXES
+% =============================================================
+\usepackage{xcolor}
+\definecolor{PosterBlue}{RGB}{0,72,140}
+\definecolor{LightBlue}{RGB}{220,235,250}
+\definecolor{DarkGray}{RGB}{60,60,60}
+\definecolor{TableHead}{RGB}{0,72,140}
+\usepackage[most]{tcolorbox}
+
+% Blue header section box
+\newtcolorbox{sectionbox}[1]{
+  colback=white,
+  colframe=PosterBlue,
+  boxrule=1.2pt,
+  arc=2mm,
+  title=\textcolor{white}{\textbf{\large #1}},
+  coltitle=white,
+  colbacktitle=PosterBlue,
+  attach boxed title to top left={xshift=4mm,yshift=-3mm},
+  boxed title style={sharp corners, boxrule=0pt,
+                     left=4mm, right=4mm, top=2mm, bottom=2mm},
+  before skip=10pt,
+  after skip=10pt,
+  left=4mm, right=4mm, top=6mm, bottom=4mm
+}
+
+% Shaded decision-guide box
+\newtcolorbox{guidebox}{
+  colback=LightBlue,
+  colframe=PosterBlue,
+  boxrule=0.8pt,
+  arc=2mm,
+  left=4mm, right=4mm, top=3mm, bottom=3mm,
+  before skip=6pt,
+  after skip=6pt
+}
+
+% =============================================================
+% FIGURES (TikZ / PGFPlots)
+% =============================================================
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,matrix}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf,skip=4pt}
+
+% Shared node styles for pipeline diagrams
+\tikzset{
+  pbox/.style={draw=PosterBlue, rounded corners=2pt, align=center,
+               font=\scriptsize, fill=LightBlue,
+               minimum width=1.4cm, minimum height=0.6cm,
+               inner sep=2pt},
+  parr/.style={-Stealth, thick, color=DarkGray}
+}
+
+% =============================================================
+% TABULAR HELPERS
+% =============================================================
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{colortbl}
+
+% =============================================================
+% TITLE BLOCK COMMANDS
+% =============================================================
+\newcommand{\PosterTitle}[1]{%
+  \begin{center}
+    \textcolor{PosterBlue}{\rule{\linewidth}{2pt}}\\[4pt]
+    {\fontsize{36}{42}\bfseries #1}\\[4pt]
+    \textcolor{PosterBlue}{\rule{\linewidth}{2pt}}
+  \end{center}}
+\newcommand{\PosterAuthors}[1]{\begin{center}\large\bfseries #1\end{center}}
+\newcommand{\PosterAffil}[1]{\begin{center}\normalsize\itshape #1\end{center}}
+
+% =============================================================
+% DOCUMENT
+% =============================================================
+\begin{document}
+
+% ---------------------------------------------------------------
+% HEADER
+% ---------------------------------------------------------------
+\PosterTitle{Balancing Speed and Precision: The Evolution and Future of Object Detection}
+\PosterAuthors{Kumar Prateek}
+\PosterAffil{%
+  Department of Information Technology,\;
+  Indian Institute of Information Technology, Allahabad%
+  \quad\textbullet\quad iit2023087@iiita.ac.in}
+
+\vspace{6pt}
+
+\begin{multicols}{2}
+
+% ==============================================================
+% LEFT COLUMN
+% ==============================================================
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{INTRODUCTION}
+\small
+\textbf{Object detection} jointly determines \emph{what} objects are present in an image
+and \emph{where} they are, outputting bounding boxes and class labels.
+Unlike classification, detection must handle an unknown number of objects at varying
+scales and with potential overlap---making the task fundamentally harder.
+
+The central tension in detector design is:
+\begin{itemize}
+  \item \textbf{Precision (mAP):} fewer misses, fewer false alarms, tight localization.
+  \item \textbf{Speed (FPS / latency):} throughput for real-time and edge deployment.
+\end{itemize}
+
+\textbf{Thesis:} Detectors evolved from hand-crafted features through CNN-based
+two-stage and one-stage pipelines to transformer-based set prediction,
+each generation reshaping the speed--precision frontier.
+\end{sectionbox}
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{TRADITIONAL METHODS (PRE-2012)}
+\small
+\textbf{Core idea:} exhaustive region enumeration + engineered features + shallow classifiers.
+
+\begin{itemize}
+  \item \textbf{Viola--Jones (2001):} Haar features + integral image + AdaBoost cascade,
+        enabling real-time face detection.
+  \item \textbf{HOG + SVM (2005):} gradient histograms for pedestrian detection.
+  \item \textbf{DPM (2010):} deformable part models for articulated objects.
+\end{itemize}
+
+\textbf{Limitation:} hand-crafted descriptors could not generalise across clutter,
+viewpoint variation, or long-tail categories.
+
+\vspace{4pt}
+\begin{center}
+\scalebox{0.88}{%
+\begin{tikzpicture}[node distance=2mm and 4mm]
+  \node[pbox] (pyr)  {Image\\Pyramid};
+  \node[pbox, right=of pyr]  (sw)   {Sliding\\Windows};
+  \node[pbox, right=of sw]   (feat) {Haar/HOG\\Features};
+  \node[pbox, right=of feat] (clf)  {SVM /\\Boost};
+  \node[pbox, right=of clf]  (nms)  {NMS};
+  \node[pbox, right=of nms]  (out)  {Boxes};
+  \foreach \a/\b in {pyr/sw, sw/feat, feat/clf, clf/nms, nms/out}
+    \draw[parr] (\a)--(\b);
+\end{tikzpicture}}
+\captionof{figure}{\small Traditional detection pipeline.}
+\end{center}
+\end{sectionbox}
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{TWO-STAGE DETECTORS}
+\small
+AlexNet (2012) proved CNNs could learn features from data, triggering the
+\textbf{R-CNN family}:
+
+\begin{itemize}
+  \item \textbf{R-CNN:} selective search proposals $\rightarrow$ per-region CNN $\rightarrow$ SVM (slow).
+  \item \textbf{Fast R-CNN:} shared conv backbone + RoI pooling (5--9$\times$ faster).
+  \item \textbf{Faster R-CNN:} learnable RPN replaces search; near real-time at high mAP.
+  \item \textbf{Mask R-CNN:} extends with a mask branch for instance segmentation.
+\end{itemize}
+
+\textbf{Trade-off:} highest mAP but per-proposal processing limits throughput.
+\end{sectionbox}
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{ONE-STAGE DETECTORS \& FOCAL LOSS}
+\small
+\textbf{Key insight:} skip the proposal stage; predict boxes \& classes at every
+grid cell / anchor in a single forward pass.
+
+\begin{itemize}
+  \item \textbf{YOLO (2016):} grid-cell unified prediction; fastest family.
+  \item \textbf{SSD (2016):} multi-scale feature maps handle object scale variation.
+  \item \textbf{RetinaNet (2017):} Focal Loss addresses foreground--background imbalance:
+    \( FL(p_t) = -\alpha_t(1-p_t)^\gamma \log p_t \)
+  \item \textbf{YOLOv5--v9:} improved backbone (CSP, ELAN), neck (PANet), and head
+        designs deliver state-of-the-art speed--accuracy.
+\end{itemize}
+
+\textbf{Trade-off:} 3--5$\times$ faster than two-stage; slightly lower mAP on
+small, dense, or occluded objects.
+\end{sectionbox}
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{TRANSFORMERS: DETR \& SUCCESSORS}
+\small
+\textbf{DETR (2020):} recasts detection as \emph{direct set prediction}.
+\begin{itemize}
+  \item Fixed set of \textbf{object queries} attend over CNN feature maps.
+  \item \textbf{Bipartite (Hungarian) matching} provides unique assignment during training.
+  \item Eliminates hand-designed anchors and (in principle) NMS.
+  \item \textbf{Drawback:} slow convergence; heavy compute on small objects.
+\end{itemize}
+
+\textbf{Key successors:} Deformable DETR, DAB-DETR, DINO-DETR (faster convergence,
+multi-scale attention). \textbf{Grounding DINO} and \textbf{OWLv2} extend to
+open-vocabulary detection via text--image alignment.
+\end{sectionbox}
+
+% ==============================================================
+% RIGHT COLUMN
+% ==============================================================
+\columnbreak
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{STATE-OF-THE-ART COMPARISON}
+\small
+\textbf{Note:} values are representative (COCO \texttt{val2017}); hardware and
+post-processing settings vary across papers.
+
+\vspace{4pt}
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\rowcolor{TableHead}
+\textcolor{white}{\textbf{Model}} &
+\textcolor{white}{\textbf{mAP}} &
+\textcolor{white}{\textbf{FPS}} &
+\textcolor{white}{\textbf{GFLOPs}} &
+\textcolor{white}{\textbf{Params (M)}} \\
+\midrule
+Faster R-CNN (ResNet-50) & 42.0 & 26  & 246 & 60.1 \\
+SSD 512 (VGG-16)         & 29.8 & 61  &  90 & 26.3 \\
+RetinaNet-101            & 40.8 & 18  & 355 & 56.7 \\
+DETR (ResNet-50)         & 42.0 & 38  &  86 & 41.3 \\
+YOLOv8-L                 & 46.8 & 97  & 165 & 43.7 \\
+YOLOv9-E                 & 55.6 & 35  & 189 & 57.3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{4pt}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.88\columnwidth,
+  height=0.50\columnwidth,
+  grid=both, grid style={draw=gray!20},
+  xlabel={FPS (higher is faster)},
+  ylabel={mAP (higher is better)},
+  xmin=0, xmax=110, ymin=25, ymax=60,
+  ticklabel style={font=\scriptsize},
+  label style={font=\small},
+]
+\addplot[only marks, mark=*, mark size=2.5pt,
+  nodes near coords,
+  every node near coord/.style={font=\tiny, yshift=5pt}]
+  coordinates {
+    (26,42.0)  [Faster R-CNN]
+    (61,29.8)  [SSD512]
+    (18,40.8)  [RetinaNet-101]
+    (38,42.0)  [DETR]
+    (97,46.8)  [YOLOv8-L]
+    (35,55.6)  [YOLOv9-E]
+  };
+\end{axis}
+\end{tikzpicture}
+\captionof{figure}{\small mAP vs.\ FPS (COCO; illustrative). Higher-right is better.}
+\end{center}
+\end{sectionbox}
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{WHEN TO USE WHAT MODEL}
+\small
+No single detector dominates all scenarios.  Use the decision guide below to
+match deployment constraints to the appropriate model family.
+
+\vspace{4pt}
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}>{\bfseries}p{3.2cm}p{3.0cm}p{3.0cm}p{3.0cm}@{}}
+\toprule
+\rowcolor{TableHead}
+\textcolor{white}{\textbf{Constraint}} &
+\textcolor{white}{\textbf{Two-Stage}} &
+\textcolor{white}{\textbf{One-Stage (YOLO/SSD)}} &
+\textcolor{white}{\textbf{DETR / Transformers}} \\
+\midrule
+Accuracy-critical (medical, safety) &
+\cellcolor{green!20}Preferred & OK & Good \\
+Real-time / edge ($\leq$\,20\,ms) &
+Limited & \cellcolor{green!20}Preferred & Limited \\
+Crowded / overlapping objects &
+\cellcolor{green!20}Preferred & Acceptable & Good \\
+Open-vocabulary / novel classes &
+Poor & Limited & \cellcolor{green!20}Preferred \\
+Small objects, multi-scale &
+\cellcolor{green!20}Preferred & Good (FPN) & Needs tuning \\
+Anchor-free pipeline &
+No & FCOS/CenterNet & \cellcolor{green!20}Yes (no NMS) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{4pt}
+\begin{guidebox}
+\small\textbf{Quick guide:}
+\begin{itemize}
+  \item \textbf{Edge / mobile / real-time:} YOLOv8n, YOLOv9s, MobileNet-SSD.
+  \item \textbf{High-accuracy server inference:} Faster R-CNN w/ ResNet-101, YOLOv9-E.
+  \item \textbf{Open-vocabulary / long-tail:} Grounding DINO, OWLv2.
+  \item \textbf{Research / set-prediction elegance:} DETR, Deformable DETR.
+\end{itemize}
+\end{guidebox}
+\end{sectionbox}
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{DEPLOYMENT CHECKLIST}
+\small
+Before shipping a detector to production, verify the following:
+
+\begin{enumerate}
+  \item \textbf{Latency budget:} measure end-to-end (pre-processing + inference + NMS),
+        not just backbone FLOPs.
+  \item \textbf{Input resolution:} higher resolution improves small-object recall but
+        quadratically increases compute; profile on target hardware.
+  \item \textbf{Batch size:} batch\,=\,1 latency for streaming; larger batches for
+        offline throughput---tune separately.
+  \item \textbf{NMS cost:} IoU-NMS is $O(n^2)$ in proposals; use batched NMS,
+        Soft-NMS, or NMS-free heads (DETR) when $n$ is large.
+  \item \textbf{Quantization / pruning:} INT8 post-training quantization (PTQ) typically
+        retains $\sim$98\,\% mAP with 2--4$\times$ speedup on edge hardware;
+        validate accuracy before deployment.
+\end{enumerate}
+\end{sectionbox}
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{CONCLUSION}
+\small
+
+\begin{itemize}
+  \item Object detection has progressed from hand-crafted sliding-window pipelines
+        to end-to-end learned networks, achieving dramatic gains in both accuracy
+        and speed on standard benchmarks.
+  \item \textbf{Two-stage detectors} (Faster R-CNN family) remain the benchmark for
+        highest accuracy but are constrained by per-proposal overhead.
+  \item \textbf{One-stage detectors} (YOLO family) dominate real-time and edge
+        deployment with competitive accuracy and simple pipelines.
+  \item \textbf{Transformer-based detectors} (DETR family) eliminate anchors and NMS,
+        enable open-vocabulary grounding, but require more compute and data.
+  \item The \textbf{speed--precision frontier} continues to improve: YOLOv9-E
+        achieves 55.6 mAP---matching earlier two-stage models---at real-time speed.
+  \item \textbf{Future directions:} edge-optimised transformers, 3D/LiDAR-camera
+        fusion, open-vocabulary grounding, and hardware-aware neural architecture
+        search promise to further narrow the gap between speed and precision.
+\end{itemize}
+\end{sectionbox}
+
+% ---------------------------------------------------------------
+\begin{sectionbox}{REFERENCES (SELECTED)}
+\scriptsize
+[1] P.~Viola \& M.~Jones, CVPR~2001.~~
+[2] N.~Dalal \& B.~Triggs, CVPR~2005.~~
+[3] P.~Felzenszwalb et al., PAMI~2010.~~
+[4] A.~Krizhevsky et al., NeurIPS~2012.~~
+[5] R.~Girshick et al., CVPR~2014.~~
+[6] S.~Ren et al., NeurIPS~2015.~~
+[7] J.~Redmon et al., CVPR~2016.~~
+[8] W.~Liu et al., ECCV~2016.~~
+[9] T.-Y.~Lin et al., ICCV~2017.~~
+[10] N.~Carion et al., ECCV~2020.~~
+[11] Z.~Liu et al., ICCV~2021.~~
+[12] S.~Wang et al., CVPR~2024 (YOLOv9).~~
+[13] S.~Liu et al., arXiv~2023 (Grounding DINO).
+\end{sectionbox}
+
+\end{multicols}
+
+\end{document}
