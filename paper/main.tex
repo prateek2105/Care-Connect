@@ -1,0 +1,697 @@
+% ============================================================
+% IEEE Two-Column Conference Paper
+% "From Sliding Windows to Transformers: A Survey of
+%  Object Detection Architectures"
+% ============================================================
+\documentclass[conference]{IEEEtran}
+
+% ---------- Core packages ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+% ---------- TikZ / PGFPlots ----------
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{
+  arrows.meta,
+  positioning,
+  shapes.geometric,
+  shapes.misc,
+  fit,
+  calc,
+  backgrounds,
+  decorations.pathreplacing,
+  matrix
+}
+
+% ---------- Convenience ----------
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\ie}{\textit{i.e.}}
+
+% ============================================================
+%  TIKZ STYLE DEFINITIONS (shared across all figures)
+% ============================================================
+\tikzset{
+  block/.style={
+    rectangle, rounded corners=3pt,
+    draw=black!70, fill=blue!10,
+    minimum width=1.6cm, minimum height=0.55cm,
+    font=\scriptsize, align=center, inner sep=3pt
+  },
+  blockG/.style={block, fill=green!12},
+  blockO/.style={block, fill=orange!15},
+  blockP/.style={block, fill=purple!12},
+  blockR/.style={block, fill=red!10},
+  blockY/.style={block, fill=yellow!18},
+  arr/.style={-{Stealth[length=4pt]}, thick},
+  dasharr/.style={-{Stealth[length=4pt]}, dashed, thick, draw=gray!70},
+}
+
+% ============================================================
+\begin{document}
+
+\title{From Sliding Windows to Transformers:\\
+A Survey of Object Detection Architectures}
+
+\author{
+  \IEEEauthorblockN{Kumar Prateek}
+  \IEEEauthorblockA{Department of Computer Science\\
+    University XYZ\\
+    prateek@example.edu}
+  \and
+  \IEEEauthorblockN{Aaryan Kuntal}
+  \IEEEauthorblockA{Department of Computer Science\\
+    University XYZ\\
+    kuntal@example.edu}
+}
+
+\maketitle
+
+% ============================================================
+\begin{abstract}
+Object detection has evolved from handcrafted feature pipelines
+and exhaustive search windows to end-to-end deep learning
+systems capable of real-time operation.  This survey traces that
+evolution: classical sliding-window detectors, the two-stage
+deep detectors (R-CNN family) that introduced shared convolutional
+features and region proposal networks, the one-stage detectors
+(YOLO, SSD, RetinaNet) that reframed detection as dense
+regression to achieve high frame rates, and the
+transformer-based DETR paradigm that replaced heuristic
+post-processing with bipartite set matching.  For each
+architectural family we discuss key design decisions, trade-offs
+on the speed--accuracy Pareto frontier, and the specific
+problems that motivated the next generation of models.
+\end{abstract}
+
+\begin{IEEEkeywords}
+object detection, convolutional neural networks, region proposal
+network, YOLO, DETR, Pareto frontier
+\end{IEEEkeywords}
+
+% ============================================================
+% PAGE 1-2 — INTRODUCTION & CLASSICAL METHODS
+% ============================================================
+\section{Introduction}
+
+Object detection—the joint problem of \emph{localising} and
+\emph{classifying} all instances of objects in an image—has been
+a core challenge in computer vision for several decades.  The
+difficulty stems from the need to handle extreme variation in
+scale, viewpoint, illumination, occlusion, and background
+clutter, while maintaining acceptable speed for practical
+deployment.
+
+Early solutions relied entirely on handcrafted image descriptors
+and statistical classifiers.  The Viola--Jones detector
+\cite{viola2001rapid} demonstrated that even simple Haar-like
+features, when combined with a cascade of classifiers and the
+integral image trick, could achieve real-time face detection on
+2000s hardware.  HOG-based deformable part models
+\cite{felzenszwalb2010object} later generalised this idea to
+arbitrary object categories, remaining competitive until the
+deep learning era.
+
+Figure~\ref{fig:traditional_pipeline} illustrates the structure
+of a classical detection pipeline.  The core steps—dense
+sliding-window sampling, handcrafted feature extraction, and a
+learned linear classifier—were shared across virtually all
+pre-deep-learning detectors.  Their limitations (rigidity of
+features, slow exhaustive search, limited generalisation)
+motivated the shift to learned representations.
+
+% ---- FIGURE 1: Traditional pipeline ----
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[node distance=0.35cm and 0.25cm]
+    % Row of nodes
+    \node[block, fill=gray!12] (img)  {Input\\Image};
+    \node[blockO, right=of img]  (sw)   {Sliding\\Window};
+    \node[block,  right=of sw]   (feat) {HOG /\\Haar Feat.};
+    \node[blockG, right=of feat] (clf)  {SVM /\\AdaBoost};
+    \node[blockR, right=of clf]  (nms)  {NMS\\Filter};
+
+    % Arrows
+    \draw[arr] (img)  -- (sw);
+    \draw[arr] (sw)   -- (feat);
+    \draw[arr] (feat) -- (clf);
+    \draw[arr] (clf)  -- (nms);
+
+    % Brace label below
+    \draw[decorate,
+          decoration={brace,amplitude=4pt,mirror},
+          draw=gray!60]
+      ([yshift=-4pt]sw.south west) --
+      ([yshift=-4pt]clf.south east)
+      node[midway, below=5pt, font=\tiny, align=center]
+        {Repeated $\sim$10\,000$\times$ per image};
+  \end{tikzpicture}
+  \caption{Classical detection pipeline: an exhaustive sliding
+    window enumerates candidate regions; hand-crafted features
+    (HOG or Haar) are computed per window; a learned classifier
+    scores each; NMS retains the highest-scoring non-overlapping
+    detections.  This process must be repeated at multiple
+    scales and aspect ratios.}
+  \label{fig:traditional_pipeline}
+\end{figure}
+
+The survey is structured as follows.  Section~\ref{sec:dl}
+introduces the deep learning transition and the two-stage
+detector family (R-CNN, Fast R-CNN, Faster R-CNN).
+Section~\ref{sec:onestage} covers one-stage detectors (YOLO,
+SSD, RetinaNet).  Section~\ref{sec:detr} describes the
+transformer-based DETR architecture.  Section~\ref{sec:pareto}
+analyses the speed--accuracy trade-off across all families.
+
+\subsection{Evaluation Metrics}
+
+The standard measure of detection quality is mean Average
+Precision (mAP).  A detection is counted as a true positive if
+its \textit{Intersection over Union} (IoU) with a ground-truth
+box exceeds a threshold $\tau$:
+\begin{equation}
+  \mathrm{IoU}(B_p,B_{gt}) =
+  \frac{\mathrm{Area}(B_p \cap B_{gt})}
+       {\mathrm{Area}(B_p \cup B_{gt})}.
+  \label{eq:iou}
+\end{equation}
+Equation~\eqref{eq:iou} ranges from $0$ (no overlap) to $1$
+(perfect alignment).  COCO-style evaluation averages mAP over
+$\tau\in\{0.50,0.55,\ldots,0.95\}$, penalising imprecise
+localisation more strongly than the older Pascal VOC protocol
+($\tau{=}0.50$).
+
+% ============================================================
+% PAGE 3 — THE DEEP LEARNING REVOLUTION & TWO-STAGE (PART 1)
+% ============================================================
+\section{The Deep Learning Revolution}
+\label{sec:dl}
+
+The success of AlexNet \cite{krizhevsky2012imagenet} on
+large-scale image classification demonstrated that convolutional
+neural networks (CNNs), when trained with sufficient data and
+compute, could learn feature representations that were both more
+expressive and more transferable than classical hand-designed
+descriptors.  For object detection, this shift meant the feature
+extractor itself could be learned from data, enabling
+representations that adapt to texture, shape, pose variation, and
+background clutter.
+
+\subsection{Two-Stage Detectors (Precision Pioneers)}
+
+Two-stage detectors formalise detection as a \emph{candidate
+filtering} problem.  Rather than classifying every possible
+window, the first stage proposes a small set of regions likely
+to contain objects; the second stage performs a more expensive
+analysis on those regions to assign class labels and refine
+localisation.  Figure~\ref{fig:twostage_pipeline} illustrates
+the canonical two-stage workflow.
+
+% ---- FIGURE 2: Two-stage detector ----
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[node distance=0.35cm and 0.3cm]
+    % ---- Row 1 (Stage 1) ----
+    \node[block, fill=gray!12]     (img)  {Image};
+    \node[block,  right=0.5cm of img]   (bb)   {CNN\\Backbone};
+    \node[blockO, right=0.5cm of bb]    (rpn)  {RPN\\(Stage~1)};
+
+    % ---- Row 2 (Stage 2) ----
+    \node[blockG, below=0.8cm of bb]    (roi)  {RoI\\Pooling};
+    \node[block,  right=0.5cm of roi]   (head) {Class.\ +\\Reg.\ Head};
+    \node[blockP, right=0.5cm of head]  (out)  {Boxes +\\Labels};
+
+    % ---- Arrows ----
+    \draw[arr] (img)  -- (bb);
+    \draw[arr] (bb)   -- (rpn);
+    % Stage-1 proposals down to Stage-2
+    \draw[arr] (rpn.south) -- ++(0,-0.25)
+                  -| (roi.north)
+                  node[near start, right, font=\tiny]{top-$k$};
+    % shared feature map to RoI
+    \draw[arr] (bb) -- node[left, font=\tiny]{feat.\ map} (roi);
+    % Stage-2 pipeline
+    \draw[arr] (roi)  -- (head);
+    \draw[arr] (head) -- (out);
+  \end{tikzpicture}
+  \caption{Two-stage detector workflow.  A backbone CNN computes
+    a shared feature map once.  A Region Proposal Network (RPN)
+    selects the top-$k$ candidate regions (Stage~1); RoI pooling
+    extracts fixed-size features for each proposal, which a
+    classification/regression head refines into final predictions
+    (Stage~2).}
+  \label{fig:twostage_pipeline}
+\end{figure}
+
+\subsubsection{R-CNN}
+
+R-CNN \cite{girshick2014rich} was the first widely adopted
+system to demonstrate large accuracy gains for detection via
+CNN feature learning.  Its pipeline uses (i) Selective Search
+\cite{uijlings2013selective} to generate $\approx$2\,000
+category-agnostic candidate regions; (ii) per-region CNN forward
+passes to obtain fixed-dimensional feature vectors; (iii)
+class-specific linear SVMs for classification and a separate
+regressor for box refinement.  While accurate, R-CNN's CNN had
+to be executed once per proposal, making it impractical for
+real-time use.
+
+\subsubsection{Fast R-CNN}
+
+Fast R-CNN \cite{girshick2015fast} reorganised computation by
+running the CNN \emph{once} over the whole image to produce a
+shared feature map.  A \textit{RoI pooling} layer then extracts
+a fixed-size representation for each proposal.  This (i) reuses
+convolutional work across all proposals, and (ii) enables joint
+multi-task training of classification and box regression with a
+single network.  The bottleneck shifted to the external Selective
+Search proposal generator.
+
+% ============================================================
+% PAGE 4 — TWO-STAGE (PART 2) & BOTTLENECK
+% ============================================================
+\subsection{Faster R-CNN and the Region Proposal Network}
+
+Faster R-CNN \cite{ren2015faster} replaced Selective Search with
+a learnable \textit{Region Proposal Network} (RPN) that slides
+over the shared feature map and predicts objectness scores and
+anchor refinements at each spatial location.  High-scoring
+proposals feed the RoI classification head.  The entire system
+can be trained end-to-end and runs on the GPU, removing the
+CPU-bound bottleneck.
+
+Despite these gains, Faster R-CNN retains the sequential
+two-stage structure: Stage 1 must complete before Stage 2 can
+begin.  RoI processing cost scales with the number of proposals
+retained.  For crowded scenes or tight latency budgets, this
+sequential structure becomes a ceiling.
+
+% ============================================================
+% PAGE 5 — ONE-STAGE DETECTORS (PART 1)
+% ============================================================
+\section{One-Stage Detectors: The Speed Revolution}
+\label{sec:onestage}
+
+One-stage detectors discard explicit region proposals and instead
+treat detection as \textit{dense prediction}: the network
+directly emits class confidences and box parameters at many
+spatial locations in a single forward pass.
+Figure~\ref{fig:onestage_pipeline} shows this workflow.  The
+absence of a proposal stage maps well to GPU parallelism but
+introduces a severe foreground-background class imbalance
+(discussed in Section~\ref{sec:focal}).
+
+% ---- FIGURE 3: One-stage detector ----
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[node distance=0.3cm and 0.25cm]
+    \node[block, fill=gray!12] (img)      {Image};
+    \node[block,  right=0.45cm of img]    (bb)  {CNN\\Backbone};
+    \node[blockY, right=0.45cm of bb]     (fpn) {FPN /\\Multi-scale};
+    \node[blockO, right=0.45cm of fpn]    (head){Dense\\Pred. Head};
+    \node[blockG, right=0.45cm of head]   (nms) {NMS\\Filter};
+    \node[blockP, right=0.45cm of nms]    (out) {Boxes +\\Labels};
+
+    \draw[arr] (img)  -- (bb);
+    \draw[arr] (bb)   -- (fpn);
+    \draw[arr] (fpn)  -- (head);
+    \draw[arr] (head) -- (nms);
+    \draw[arr] (nms)  -- (out);
+
+    % annotation
+    \node[font=\tiny, align=center, gray, below=3pt of head]
+      {$H{\times}W{\times}A$ anchors\\per FPN level};
+  \end{tikzpicture}
+  \caption{One-stage detector workflow.  After backbone feature
+    extraction and optional feature pyramid (FPN), a dense
+    prediction head scores all anchor boxes in a single pass.
+    Non-Maximum Suppression (NMS) removes redundant detections
+    to produce the final output.  No sequential
+    proposal stage is required.}
+  \label{fig:onestage_pipeline}
+\end{figure}
+
+\subsection{YOLOv1: Unified Grid-Based Prediction}
+
+YOLOv1 \cite{redmon2016you} partitions the image into an
+$S{\times}S$ grid.  Each cell predicts $B$ bounding boxes
+(geometry + confidence) and $C$ conditional class probabilities,
+yielding detections in a single network evaluation.  Global
+image context is incorporated because the full image is seen
+at once.  The grid responsibility assignment limits the model
+to a small number of objects per cell, which motivated
+subsequent improvements.
+
+\subsection{SSD: Multi-Scale Feature Maps}
+
+The Single Shot MultiBox Detector (SSD) \cite{liu2016ssd}
+attaches lightweight detection heads to multiple feature maps at
+different backbone depths.  Shallow maps (higher spatial
+resolution) handle small objects; deep maps (large receptive
+field) handle large objects.  Default boxes at multiple aspect
+ratios and scales are defined per location, increasing the
+variety of detectable shapes without a proposal stage.
+
+\subsection{RetinaNet and Focal Loss}
+\label{sec:focal}
+
+One-stage detectors suffer from extreme class imbalance: the vast
+majority of anchor positions are easy-to-classify backgrounds,
+which swamp the gradient signal.  RetinaNet \cite{lin2017focal}
+addresses this with \textit{Focal Loss} \eqref{eq:focal}:
+\begin{equation}
+  \mathrm{FL}(p_t) = -\alpha_t (1 - p_t)^\gamma \log(p_t),
+  \label{eq:focal}
+\end{equation}
+where $p_t$ is the model's estimated probability for the correct
+class, $\gamma{>}0$ is a focusing parameter, and $\alpha_t$
+balances positive/negative examples.  Easy negatives ($p_t\to1$)
+are down-weighted by $(1{-}p_t)^\gamma$, concentrating learning
+on hard, informative examples.  RetinaNet matched two-stage
+accuracy at competitive speeds, closing the mAP gap that had
+held one-stage detectors back.
+
+\subsection{The YOLO Family}
+
+After the original YOLOv1, the YOLO line iterated rapidly.
+YOLOv2/YOLO9000 \cite{redmon2017yolo9000} introduced
+anchor-based prediction and multi-scale training.  YOLOv3
+\cite{redmon2018yolov3} added a feature pyramid and a deeper
+backbone.  YOLOv4 \cite{bochkovskiy2020yolov4} incorporated the
+CSPDarknet backbone, PANet neck, and extensive data augmentation.
+Later versions (v5--v8, including ultralytics variants) adopted
+anchor-free detection heads, reparameterised backbones, and
+task-aligned assignment strategies, continuing to push the
+Pareto frontier.
+
+% ============================================================
+% PAGE 7 — TRANSFORMER-BASED DETECTION: DETR
+% ============================================================
+\section{Transformer-Based Detection: DETR}
+\label{sec:detr}
+
+All detectors discussed so far rely on hand-designed
+post-processing: anchor definitions, Non-Maximum Suppression,
+and label-assignment heuristics.  DETR (DEtection TRansformer)
+\cite{carion2020end} eliminates these components by casting
+detection as a \textit{set prediction} problem solved via
+bipartite matching.
+
+Figure~\ref{fig:detr_pipeline} shows the DETR workflow.  A CNN
+backbone extracts a feature map, which is flattened and passed
+through a standard Transformer encoder.  The decoder receives
+$N$ learned \textit{object queries} and attends to the encoder
+memory, outputting $N$ box--class predictions.  At training
+time, a \textit{Hungarian algorithm} matches predictions to
+ground-truth objects with minimum cost, providing a unique
+assignment that makes the loss permutation-invariant.
+
+% ---- FIGURE 4: DETR workflow ----
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[node distance=0.32cm and 0.28cm]
+    % ---- Top pipeline row ----
+    \node[block, fill=gray!12]      (img)  {Image};
+    \node[block,  right=0.4cm of img]   (cnn)  {CNN\\Backbone};
+    \node[block,  right=0.4cm of cnn]   (enc)  {Transformer\\Encoder};
+    \node[blockG, right=0.4cm of enc]   (dec)  {Transformer\\Decoder};
+    \node[blockP, right=0.4cm of dec]   (ffn)  {FFN\\Heads};
+    \node[blockR, right=0.4cm of ffn]   (out)  {$N$ Preds\\(box+cls)};
+
+    % ---- Object queries (below decoder) ----
+    \node[blockY, below=0.7cm of dec]   (q)    {$N$ Learned\\Object Queries};
+
+    % ---- Hungarian matching (below out, training only) ----
+    \node[blockO, below=0.7cm of out]   (hung) {Hungarian\\Matching};
+
+    % ---- Main pipeline arrows ----
+    \draw[arr] (img) -- (cnn);
+    \draw[arr] (cnn) -- (enc);
+    \draw[arr] (enc) -- node[above,font=\tiny]{memory} (dec);
+    \draw[arr] (dec) -- (ffn);
+    \draw[arr] (ffn) -- (out);
+
+    % queries into decoder
+    \draw[arr] (q.north) -- (dec.south);
+
+    % positional encoding annotation
+    \node[font=\tiny, gray, above=3pt of enc]{+ pos.\ enc.};
+
+    % training-only matching (dashed)
+    \draw[dasharr] (out.south) -- (hung.north);
+    \draw[dasharr] (hung.west) -- ++(-1.0,0)
+      node[left, font=\tiny, align=right]{GT\\boxes};
+    \node[font=\tiny, gray, right=2pt of hung]{(train only)};
+  \end{tikzpicture}
+  \caption{DETR set-prediction workflow.  A CNN backbone provides
+    spatial features contextualised by a Transformer encoder with
+    positional encodings.  The decoder attends to encoder memory
+    via $N$ learned object queries and outputs $N$ box--class
+    predictions.  During training, a Hungarian matching algorithm
+    assigns each prediction to a unique ground-truth target
+    (dashed path), eliminating NMS and anchor design.}
+  \label{fig:detr_pipeline}
+\end{figure}
+
+DETR's set-matching formulation is elegant but comes with
+practical costs.  Training requires many more epochs to converge
+than CNN detectors (typically 500 vs.\ 12--36) because the
+object queries must learn to specialise.  Deformable DETR
+\cite{zhu2021deformable} mitigates this via multi-scale
+deformable attention, reducing complexity and greatly improving
+convergence speed.  Subsequent variants (DAB-DETR,
+DN-DETR, DINO-DETR) further close the gap with one-stage
+detectors on both accuracy and speed.
+
+% ============================================================
+% PAGE 8 — SPEED–ACCURACY PARETO FRONTIER
+% ============================================================
+\section{Speed–Accuracy Trade-off}
+\label{sec:pareto}
+
+A central design tension in object detection is the trade-off
+between accuracy (mAP on COCO) and inference speed (FPS on a
+fixed GPU budget).  Figure~\ref{fig:pareto} plots representative
+models on this frontier.  Two-stage detectors (Faster R-CNN
+variants) occupy the high-accuracy / lower-speed region.
+One-stage detectors span a wide range: early YOLO generations
+achieve very high FPS at modest mAP; RetinaNet and later YOLO
+versions approach two-stage accuracy while maintaining
+practical speeds.  DETR occupies a distinct region owing to
+its Transformer backbone, which is compute-intensive but enables
+superior cross-image reasoning.
+
+% ---- FIGURE 5: Pareto frontier ----
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=\columnwidth,
+      height=5.5cm,
+      xlabel={Inference Speed (FPS, V100)},
+      ylabel={COCO mAP (\%)},
+      xlabel style={font=\small},
+      ylabel style={font=\small},
+      tick label style={font=\small},
+      xmin=0, xmax=140,
+      ymin=20, ymax=62,
+      grid=both,
+      grid style={line width=0.3pt, draw=gray!30},
+      legend style={font=\tiny, at={(0.02,0.98)},
+                    anchor=north west, fill=white,
+                    draw=gray!60, inner sep=2pt},
+      legend cell align={left},
+    ]
+      % Two-stage (blue)
+      \addplot[only marks, mark=square*, mark size=3pt,
+               color=blue!70]
+        coordinates {
+          (5,  37.4)   % Faster R-CNN R50
+          (8,  42.0)   % Faster R-CNN R101
+          (12, 46.3)   % Cascade R-CNN
+        };
+      \addlegendentry{Two-stage (Faster R-CNN / Cascade)}
+
+      % One-stage (orange)
+      \addplot[only marks, mark=*, mark size=3pt,
+               color=orange!80!black]
+        coordinates {
+          (45, 31.0)   % YOLOv3-416
+          (65, 28.2)   % SSD300
+          (38, 40.8)   % RetinaNet R50
+          (25, 44.5)   % RetinaNet R101
+          (90, 37.0)   % YOLOv4-tiny (approx)
+          (62, 43.5)   % YOLOv5l (approx)
+          (50, 50.7)   % YOLOv8x (approx)
+        };
+      \addlegendentry{One-stage (YOLO / SSD / RetinaNet)}
+
+      % DETR (green)
+      \addplot[only marks, mark=triangle*, mark size=3.5pt,
+               color=green!60!black]
+        coordinates {
+          (28, 42.0)   % DETR R50
+          (20, 43.5)   % DETR R101
+          (19, 46.2)   % Deformable DETR
+          (24, 49.0)   % DINO-DETR (approx)
+        };
+      \addlegendentry{Transformer (DETR variants)}
+
+      % Pareto frontier line (dashed)
+      \addplot[dashed, color=red!70, line width=0.8pt,
+               no marks]
+        coordinates {
+          (12, 46.3)
+          (25, 44.5)
+          (38, 40.8)
+          (50, 50.7)
+          (90, 37.0)
+        };
+      \addlegendentry{Approx.\ Pareto frontier}
+
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Approximate speed--accuracy Pareto frontier for
+    representative detectors on COCO \texttt{val2017} (FPS on
+    NVIDIA V100, single-scale inference).  Values are indicative
+    from published papers; exact numbers depend on input
+    resolution and implementation.  Two-stage methods dominate
+    the high-accuracy low-speed region; one-stage and
+    transformer-based methods offer progressively better
+    speed--accuracy balance.}
+  \label{fig:pareto}
+\end{figure}
+
+The Pareto frontier has shifted significantly over time.  Early
+two-stage detectors (R-CNN) would not even appear in
+Figure~\ref{fig:pareto} due to their extremely low FPS.  The
+introduction of the RPN (Faster R-CNN), Focal Loss (RetinaNet),
+and anchor-free heads (FCOS, YOLOX) each pushed the frontier.
+Current state-of-the-art detectors routinely exceed 50 mAP at
+practical speeds, a target that seemed out of reach for most of
+the past decade.
+
+% ============================================================
+% CONCLUSION
+% ============================================================
+\section{Conclusion}
+
+This survey has traced object detection from exhaustive
+sliding-window search (Figure~\ref{fig:traditional_pipeline})
+through shared-feature two-stage detectors
+(Figure~\ref{fig:twostage_pipeline}), dense one-stage
+prediction (Figure~\ref{fig:onestage_pipeline}), and
+bipartite set matching with Transformers
+(Figure~\ref{fig:detr_pipeline}).  Each generation solved key
+bottlenecks of its predecessor: two-stage detectors replaced
+hand-crafted features with learned ones; one-stage detectors
+removed the sequential proposal bottleneck; DETR eliminated
+NMS and anchor engineering; and Focal Loss closed the
+accuracy gap caused by class imbalance.
+
+The speed--accuracy Pareto frontier (Figure~\ref{fig:pareto})
+continues to move upward.  Open challenges include detection
+under distribution shift, efficient deployment on edge
+hardware, and extending set-matching ideas to video and 3-D
+scenes.
+
+% ============================================================
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{99}
+
+\bibitem{viola2001rapid}
+P.~Viola and M.~Jones,
+``Rapid object detection using a boosted cascade of simple
+features,''
+in \textit{Proc. CVPR}, 2001, vol.~1, pp.~511--518.
+
+\bibitem{felzenszwalb2010object}
+P.~F. Felzenszwalb, R.~B. Girshick, D.~McAllester, and D.~Ramanan,
+``Object detection with discriminatively trained part-based
+models,''
+\textit{IEEE Trans. Pattern Anal. Mach. Intell.},
+vol.~32, no.~9, pp.~1627--1645, Sep. 2010.
+
+\bibitem{krizhevsky2012imagenet}
+A.~Krizhevsky, I.~Sutskever, and G.~E. Hinton,
+``ImageNet classification with deep convolutional neural
+networks,''
+in \textit{Proc. NeurIPS}, 2012, pp.~1097--1105.
+
+\bibitem{girshick2014rich}
+R.~Girshick, J.~Donahue, T.~Darrell, and J.~Malik,
+``Rich feature hierarchies for accurate object detection and
+semantic segmentation,''
+in \textit{Proc. CVPR}, 2014, pp.~580--587.
+
+\bibitem{uijlings2013selective}
+J.~R.~R. Uijlings, K.~E.~A. van~de~Sande, T.~Gevers, and
+A.~W.~M. Smeulders,
+``Selective search for object recognition,''
+\textit{Int. J. Comput. Vis.}, vol.~104, no.~2, pp.~154--171, 2013.
+
+\bibitem{girshick2015fast}
+R.~Girshick,
+``Fast R-CNN,''
+in \textit{Proc. ICCV}, 2015, pp.~1440--1448.
+
+\bibitem{ren2015faster}
+S.~Ren, K.~He, R.~Girshick, and J.~Sun,
+``Faster R-CNN: Towards real-time object detection with region
+proposal networks,''
+in \textit{Proc. NeurIPS}, 2015, pp.~91--99.
+
+\bibitem{redmon2016you}
+J.~Redmon, S.~Divvala, R.~Girshick, and A.~Farhadi,
+``You only look once: Unified, real-time object detection,''
+in \textit{Proc. CVPR}, 2016, pp.~779--788.
+
+\bibitem{liu2016ssd}
+W.~Liu \textit{et al.},
+``SSD: Single shot multibox detector,''
+in \textit{Proc. ECCV}, 2016, pp.~21--37.
+
+\bibitem{lin2017focal}
+T.-Y. Lin, P.~Goyal, R.~Girshick, K.~He, and P.~Dollar,
+``Focal loss for dense object detection,''
+in \textit{Proc. ICCV}, 2017, pp.~2980--2988.
+
+\bibitem{redmon2017yolo9000}
+J.~Redmon and A.~Farhadi,
+``YOLO9000: Better, faster, stronger,''
+in \textit{Proc. CVPR}, 2017, pp.~7263--7271.
+
+\bibitem{redmon2018yolov3}
+J.~Redmon and A.~Farhadi,
+``YOLOv3: An incremental improvement,''
+\textit{arXiv preprint arXiv:1804.02767}, 2018.
+
+\bibitem{bochkovskiy2020yolov4}
+A.~Bochkovskiy, C.-Y. Wang, and H.-Y.~M. Liao,
+``YOLOv4: Optimal speed and accuracy of object detection,''
+\textit{arXiv preprint arXiv:2004.10934}, 2020.
+
+\bibitem{carion2020end}
+N.~Carion, F.~Massa, G.~Synnaeve, N.~Usunier, A.~Kirillov, and
+S.~Zagoruyko,
+``End-to-end object detection with transformers,''
+in \textit{Proc. ECCV}, 2020, pp.~213--229.
+
+\bibitem{zhu2021deformable}
+X.~Zhu, W.~Su, L.~Lu, B.~Li, X.~Wang, and J.~Dai,
+``Deformable DETR: Deformable transformers for end-to-end
+object detection,''
+in \textit{Proc. ICLR}, 2021.
+
+\end{thebibliography}
+
+\end{document}
