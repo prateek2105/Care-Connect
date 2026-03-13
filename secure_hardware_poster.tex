@@ -1,0 +1,403 @@
+% ============================================================
+% ONE-PAGE ACADEMIC POSTER
+% Topic : Secure Hardware Chips – Architecture, Attacks & Future
+% Engine: pdfLaTeX  |  Compile on Overleaf (or locally)
+% ============================================================
+\documentclass[final]{beamer}
+
+% ---------- poster geometry ----------
+\usepackage[orientation=portrait,size=a1,scale=1.18]{beamerposter}
+
+% ---------- general packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}       % professional table rules
+\usepackage{array}          % extended column definitions
+\usepackage{multicol}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,backgrounds,fit}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{enumitem}
+\usepackage{microtype}
+
+% ============================================================
+% COLOUR PALETTE
+% ============================================================
+\definecolor{PrimaryBlue}{HTML}{0A3161}
+\definecolor{AccentTeal}{HTML}{1B7F8E}
+\definecolor{LightGray}{HTML}{F4F6F8}
+\definecolor{DarkGray}{HTML}{2C2C2C}
+\definecolor{AlertRed}{HTML}{C0392B}
+\definecolor{GreenOK}{HTML}{1A7A4A}
+\definecolor{YellowHL}{HTML}{F39C12}
+
+% ============================================================
+% BEAMER THEME OVERRIDES
+% ============================================================
+\usetheme{default}
+\setbeamercolor{background canvas}{bg=LightGray}
+\setbeamercolor{headline}{bg=PrimaryBlue,fg=white}
+\setbeamercolor{block title}{bg=AccentTeal,fg=white}
+\setbeamercolor{block body}{bg=white,fg=DarkGray}
+\setbeamercolor{block title alerted}{bg=AlertRed,fg=white}
+\setbeamercolor{block body alerted}{bg=white,fg=DarkGray}
+\setbeamercolor{block title example}{bg=GreenOK,fg=white}
+\setbeamercolor{block body example}{bg=white,fg=DarkGray}
+\setbeamerfont{block title}{size=\large,series=\bfseries}
+\setbeamerfont{headline title}{size=\huge,series=\bfseries}
+\setbeamerfont{headline author}{size=\large}
+\setbeamerfont{headline institute}{size=\normalsize}
+
+% remove navigation symbols
+\setbeamertemplate{navigation symbols}{}
+
+% ---- headline (title bar) ----
+\setbeamertemplate{headline}{
+  \begin{beamercolorbox}[wd=\paperwidth,ht=9cm,dp=0.5cm,
+                         leftskip=1.5cm,rightskip=1.5cm]{headline}
+    \vskip1.2cm
+    {\usebeamerfont{headline title}%
+     \color{white}Secure Hardware Chips:\\[0.3ex]
+     \large Architecture, Threat Landscape \& Future Frontiers}\\[0.8em]
+    {\usebeamerfont{headline author}\color{white!85!black}%
+     Kumar Prateek}\\[0.3em]
+    {\usebeamerfont{headline institute}\color{white!70!black}%
+     Department of Information Technology,
+     Indian Institute of Information Technology, Allahabad\quad
+     \texttt{iit2023087@iiita.ac.in}}
+    \vskip0.8cm
+  \end{beamercolorbox}
+}
+
+% ---- footline ----
+\setbeamertemplate{footline}{
+  \begin{beamercolorbox}[wd=\paperwidth,ht=1.8cm,dp=0.4cm,
+                         leftskip=1.5cm,rightskip=1.5cm]{headline}
+    \color{white!80!black}\small
+    \textbf{Secure Hardware Chips} \hfill
+    IIIT Allahabad \hfill
+    \today
+  \end{beamercolorbox}
+}
+
+% block style
+\setbeamertemplate{block begin}{
+  \begin{beamercolorbox}[rounded=true,shadow=false,leftskip=0.5em,
+                         colsep*=0.5ex,sep=0.5ex]{block title}%
+    \usebeamerfont{block title}\insertblocktitle
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[rounded=true,shadow=false,leftskip=0.5em,
+                         rightskip=0.5em,colsep*=0.5ex,sep=0.5ex,
+                         vmode]{block body}%
+    \usebeamerfont{block body}\vskip0.3ex
+}
+\setbeamertemplate{block end}{\vskip0.5ex\end{beamercolorbox}\vskip0.6cm}
+
+\setbeamertemplate{block alerted begin}{
+  \begin{beamercolorbox}[rounded=true,shadow=false,leftskip=0.5em,
+                         colsep*=0.5ex,sep=0.5ex]{block title alerted}%
+    \usebeamerfont{block title}\insertblocktitle
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[rounded=true,shadow=false,leftskip=0.5em,
+                         rightskip=0.5em,colsep*=0.5ex,sep=0.5ex,
+                         vmode]{block body alerted}%
+    \usebeamerfont{block body}\vskip0.3ex
+}
+\setbeamertemplate{block alerted end}{\vskip0.5ex\end{beamercolorbox}\vskip0.6cm}
+
+\setbeamertemplate{block example begin}{
+  \begin{beamercolorbox}[rounded=true,shadow=false,leftskip=0.5em,
+                         colsep*=0.5ex,sep=0.5ex]{block title example}%
+    \usebeamerfont{block title}\insertblocktitle
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[rounded=true,shadow=false,leftskip=0.5em,
+                         rightskip=0.5em,colsep*=0.5ex,sep=0.5ex,
+                         vmode]{block body example}%
+    \usebeamerfont{block body}\vskip0.3ex
+}
+\setbeamertemplate{block example end}{\vskip0.5ex\end{beamercolorbox}\vskip0.6cm}
+
+% ============================================================
+\begin{document}
+\begin{frame}[t]
+
+% ============================================================
+% MAIN CONTENT — three columns
+% ============================================================
+\begin{columns}[t,totalwidth=\linewidth]
+
+%% ─── COLUMN 1 ────────────────────────────────────────────
+\begin{column}{0.32\linewidth}
+
+  % ---- Why Secure Hardware? ----
+  \begin{block}{1 \; Why Secure Hardware?}
+    Software-only defences (encryption layers, hardened OSes) remain
+    vulnerable to \textbf{low-level physical and logical attacks} that
+    operate below the software abstraction boundary.
+
+    \medskip
+    Secure hardware chips embed \emph{security primitives directly into
+    silicon}, creating tamper-resistant environments that:
+    \begin{itemize}[leftmargin=1em,itemsep=0.2ex]
+      \item Isolate cryptographic keys from untrusted software
+      \item Verify firmware integrity before execution
+      \item Protect biometric and credential data at rest
+      \item Resist physical decapsulation and probing
+    \end{itemize}
+  \end{block}
+
+  % ---- Core Architectural Components ----
+  \begin{block}{2 \; Core Architectural Components}
+    \textbf{\color{AccentTeal}Hardware Root of Trust (RoT)}\\
+    The foundational trusted element that enables secure boot, verifies
+    firmware signatures, and prevents unauthorised software execution.
+    All other trust in the system chains back to the RoT.
+
+    \medskip
+    \textbf{\color{AccentTeal}Cryptographic Accelerators}\\
+    Dedicated processing units for AES, RSA, ECC, and SHA that improve
+    throughput, reduce power, and isolate key material from software
+    vulnerabilities in the main processor.
+
+    \medskip
+    \textbf{\color{AccentTeal}Secure Memory \& OTP Storage}\\
+    Hardware-isolated regions and One-Time Programmable (OTP) fuses
+    that safeguard keys and biometric templates against untrusted
+    software access and cold-boot attacks.
+
+    \medskip
+    \textbf{\color{AccentTeal}Trusted Execution Environments (TEE)}\\
+    Isolated processing spaces that partition system resources into
+    \emph{Secure} and \emph{Normal} worlds, protecting sensitive
+    applications (payment, biometrics, DRM) from the commodity OS.
+  \end{block}
+
+  % ---- Architecture Diagram ----
+  \begin{block}{System Trust Hierarchy}
+    \centering
+    \begin{tikzpicture}[
+        node distance=0.55cm,
+        box/.style={draw, rounded corners=4pt, minimum width=5.8cm,
+                    minimum height=0.9cm, font=\small\bfseries,
+                    align=center},
+        arrow/.style={-{Stealth[length=4pt]}, thick, color=AccentTeal}
+      ]
+      \node[box, fill=PrimaryBlue!90, text=white]  (rot)  {Hardware Root of Trust (RoT)};
+      \node[box, fill=AccentTeal!80, text=white, below=of rot] (tee)  {Trusted Execution Environment (TEE)};
+      \node[box, fill=AccentTeal!60, text=white, below=of tee] (crypt){Cryptographic Accelerators};
+      \node[box, fill=AccentTeal!40, text=DarkGray, below=of crypt] (smem){Secure Memory / OTP Storage};
+      \node[box, fill=LightGray,     text=DarkGray, below=of smem] (apps){Normal World Applications};
+      \draw[arrow] (rot)  -- (tee);
+      \draw[arrow] (tee)  -- (crypt);
+      \draw[arrow] (crypt)-- (smem);
+      \draw[arrow] (smem) -- (apps);
+    \end{tikzpicture}
+  \end{block}
+
+\end{column}
+
+%% ─── COLUMN 2 ────────────────────────────────────────────
+\begin{column}{0.35\linewidth}
+
+  % ---- Key Technologies ----
+  \begin{block}{3 \; Key Secure Chip Technologies}
+    \small
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabular}{>{\bfseries\color{PrimaryBlue}}p{3.4cm}
+                    p{8.1cm}}
+      \toprule
+      Technology & Architecture \& Function \\
+      \midrule
+      TPM
+        & A discrete security processor that stores keys, measures
+          boot sequences via Platform Configuration Registers (PCRs),
+          and enables remote attestation. \\[0.3ex]
+      ARM TrustZone
+        & Processor-level architecture dividing execution into
+          hardware-isolated \emph{Secure} and \emph{Normal} worlds
+          with strict memory partitioning. \\[0.3ex]
+      Intel SGX
+        & Instruction-set extensions creating \emph{secure enclaves}—
+          encrypted memory regions inaccessible even to the OS or
+          hypervisor. \\[0.3ex]
+      Apple Secure Enclave
+        & A physically isolated coprocessor with its own OS,
+          dedicated to biometric data (Face/Touch ID) and
+          device encryption key management. \\[0.3ex]
+      PUFs
+        & Leverages microscopic manufacturing variations to generate
+          unique, unclonable device fingerprints for lightweight
+          hardware authentication. \\
+      \bottomrule
+    \end{tabular}
+  \end{block}
+
+  % ---- Threat Landscape ----
+  \begin{alertblock}{4 \; Threat Landscape \& Countermeasures}
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{>{\bfseries\color{AlertRed}}p{3.0cm}
+                    p{4.0cm}  p{4.6cm}}
+      \toprule
+      Attack & Mechanism & Countermeasure \\
+      \midrule
+      Side-Channel
+        & Extracts keys via power, EM, or timing analysis
+        & Data masking, constant-time execution, operation
+          randomisation \\[0.3ex]
+      Fault Injection
+        & Voltage/clock glitching or laser pulses to cause
+          computational errors
+        & Redundant computations, error-detection codes, env.\
+          monitors \\[0.3ex]
+      Physical Probing
+        & Chip decapsulation and internal structure scanning
+        & Active metal shielding, tamper packaging, auto key
+          erasure \\[0.3ex]
+      Hardware Trojans
+        & Malicious circuitry inserted during manufacturing
+        & Logic testing, real-time runtime monitoring \\
+      \bottomrule
+    \end{tabular}
+  \end{alertblock}
+
+  % ---- Attack surface diagram ----
+  \begin{block}{Attack Surface Overview}
+    \centering
+    \begin{tikzpicture}[
+        node distance=0.45cm and 0.6cm,
+        atk/.style={draw=AlertRed,  fill=AlertRed!15,  rounded corners=3pt,
+                    minimum width=3.4cm, minimum height=0.75cm,
+                    font=\small, align=center},
+        cnt/.style={draw=GreenOK,   fill=GreenOK!15,   rounded corners=3pt,
+                    minimum width=3.6cm, minimum height=0.75cm,
+                    font=\small, align=center},
+        chip/.style={draw=PrimaryBlue, fill=PrimaryBlue!20, rounded corners=5pt,
+                     minimum width=3.4cm, minimum height=3.8cm,
+                     font=\small\bfseries, align=center},
+        arr/.style={-{Stealth[length=4pt]}, thick}
+      ]
+      % chip in center
+      \node[chip] (chip) {Secure\\Hardware\\Chip};
+      % attacks on left
+      \node[atk, left=1.8cm of chip, yshift=1.2cm]  (a1) {Side-Channel};
+      \node[atk, left=1.8cm of chip, yshift=0.4cm]  (a2) {Fault Injection};
+      \node[atk, left=1.8cm of chip, yshift=-0.4cm] (a3) {Probing};
+      \node[atk, left=1.8cm of chip, yshift=-1.2cm] (a4) {HW Trojans};
+      % countermeasures on right
+      \node[cnt, right=1.8cm of chip, yshift=1.2cm]  (c1) {Const-time Exec.};
+      \node[cnt, right=1.8cm of chip, yshift=0.4cm]  (c2) {Redundancy};
+      \node[cnt, right=1.8cm of chip, yshift=-0.4cm] (c3) {Active Shielding};
+      \node[cnt, right=1.8cm of chip, yshift=-1.2cm] (c4) {Logic Testing};
+      % arrows
+      \foreach \a/\c in {a1/c1, a2/c2, a3/c3, a4/c4}{
+        \draw[arr, color=AlertRed]  (\a.east)  -- (chip.west|-\a.east);
+        \draw[arr, color=GreenOK]   (chip.east|-\c.west) -- (\c.west);
+      }
+    \end{tikzpicture}
+  \end{block}
+
+\end{column}
+
+%% ─── COLUMN 3 ────────────────────────────────────────────
+\begin{column}{0.30\linewidth}
+
+  % ---- Future Frontiers ----
+  \begin{exampleblock}{5 \; Future Frontiers}
+    \textbf{\color{GreenOK}Post-Quantum Cryptography (PQC)}\\
+    New hardware accelerators optimised for lattice-based and other
+    quantum-resistant primitives (NIST PQC standards: CRYSTALS-Kyber,
+    CRYSTALS-Dilithium) are being embedded directly in secure chips to
+    maintain performance parity.
+
+    \medskip
+    \textbf{\color{GreenOK}AI-Driven Anomaly Monitoring}\\
+    Embedded ML models analyse real-time on-chip telemetry (power
+    profiles, bus activity) to detect subtle anomalies indicative of
+    advanced side-channel or fault-injection campaigns.
+
+    \medskip
+    \textbf{\color{GreenOK}Secure Chiplets}\\
+    As semiconductor manufacturing shifts toward multi-die assemblies,
+    securing inter-chiplet communication fabrics (e.g., UCIe links)
+    becomes critical to preserve the trust boundary.
+
+    \medskip
+    \textbf{\color{GreenOK}Blockchain-Based Device Identity}\\
+    Decentralised trust models anchor device identity to PUF-derived
+    hardware fingerprints registered on distributed ledgers, enabling
+    scalable IoT authentication without centralised PKI.
+
+    \medskip
+    \textbf{\color{GreenOK}Self-Healing Hardware}\\
+    Adaptive circuits dynamically alter clock rates, execution paths,
+    or introduce deliberate jitter when an ongoing attack is detected,
+    preventing data leakage without system shutdown.
+  \end{exampleblock}
+
+  % ---- Key Takeaways ----
+  \begin{block}{6 \; Key Takeaways}
+    \begin{itemize}[leftmargin=1.2em, itemsep=0.5ex]
+      \item[\color{PrimaryBlue}\textbullet]
+        Software security alone is insufficient against physical
+        adversaries; \textbf{hardware roots of trust} are essential.
+      \item[\color{PrimaryBlue}\textbullet]
+        TEEs (TrustZone, SGX, Secure Enclave) form the practical
+        foundation for protecting high-value secrets in consumer and
+        enterprise devices.
+      \item[\color{PrimaryBlue}\textbullet]
+        Side-channel and fault-injection attacks exploit the physics
+        of computation; countermeasures must be co-designed with the
+        silicon.
+      \item[\color{PrimaryBlue}\textbullet]
+        PUFs offer a compelling path to \emph{unclonable} device
+        identity rooted in manufacturing randomness.
+      \item[\color{PrimaryBlue}\textbullet]
+        The convergence of PQC, AI monitoring, and chiplet
+        architectures defines the next decade of secure hardware
+        research.
+    \end{itemize}
+  \end{block}
+
+  % ---- PQC Complexity visual ----
+  \begin{block}{Algorithm Complexity Comparison}
+    \centering\small
+    \begin{tikzpicture}
+      \begin{axis}[
+          ybar,
+          width=8.5cm, height=5.5cm,
+          bar width=0.45cm,
+          ylabel={Relative HW Cost (a.u.)},
+          ylabel style={font=\scriptsize},
+          symbolic x coords={AES-256, RSA-2048, ECC-256,
+                             Kyber-768, Dilithium3},
+          xtick=data,
+          x tick label style={font=\scriptsize, rotate=30, anchor=east},
+          ymin=0, ymax=9,
+          ytick={0,2,4,6,8},
+          yticklabel style={font=\scriptsize},
+          grid=major,
+          grid style={dotted,gray!50},
+          enlarge x limits=0.12,
+          axis background/.style={fill=white},
+          every axis plot/.style={draw=none}
+        ]
+        \addplot[fill=AccentTeal!80]
+          coordinates {(AES-256,1) (RSA-2048,5) (ECC-256,2.5)
+                       (Kyber-768,3.5) (Dilithium3,7)};
+      \end{axis}
+    \end{tikzpicture}\\[0.3ex]
+    {\scriptsize\color{DarkGray}%
+     Post-quantum algorithms (Kyber, Dilithium) require
+     dedicated accelerators to stay within power budgets.}
+  \end{block}
+
+\end{column}
+
+\end{columns}
+\end{frame}
+\end{document}
