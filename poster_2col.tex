@@ -1,0 +1,235 @@
+\documentclass[10pt]{article}
+
+% =========================================================
+% Single-page 2-column Poster (content-first, stable layout)
+% No floating figures; table is inline. Designed to fit 1 page.
+% Fix: tighter section spacing + compact references to avoid page 2.
+% =========================================================
+
+% -------- Page / typography --------
+\usepackage[a4paper,margin=10mm]{geometry}
+\usepackage{times}
+\usepackage{microtype}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2.5pt}
+\pagestyle{empty}
+
+% -------- Two-column poster layout --------
+\usepackage{multicol}
+\setlength{\columnsep}{9mm}
+\setlength{\columnseprule}{0pt}
+
+% -------- Color + section bars --------
+\usepackage{xcolor}
+\definecolor{PosterBlue}{RGB}{0,72,140}
+
+\usepackage{tcolorbox}
+\tcbuselibrary{skins}
+\tcbset{
+  enhanced,
+  boxrule=0pt,
+  arc=0mm,
+  colback=white,
+  left=2.6mm,right=2.6mm,top=1.6mm,bottom=1.6mm
+}
+\newtcolorbox{sectionbox}[1]{%
+  colback=white,
+  frame hidden,
+  title=\textcolor{white}{\textbf{\large #1}},
+  colbacktitle=PosterBlue,
+  coltitle=white,
+  attach boxed title to top left={xshift=0mm,yshift=-1.5mm},
+  boxed title style={sharp corners, boxrule=0pt, left=3.5mm, right=3.5mm, top=1.6mm, bottom=1.6mm},
+  before skip=3pt, after skip=3pt
+}
+
+% -------- Full-width blue header box --------
+\newtcolorbox{headerbox}{%
+  enhanced,
+  boxrule=0pt,
+  arc=0mm,
+  colback=PosterBlue,
+  left=4mm,right=4mm,top=3mm,bottom=3mm,
+  before skip=0pt, after skip=2mm
+}
+
+% -------- Tables / plots --------
+\usepackage{booktabs}
+
+% -------- Compact lists --------
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=*, topsep=1pt, itemsep=0.8pt, parsep=0pt}
+\setlist[enumerate]{leftmargin=*, topsep=1pt, itemsep=0.5pt, parsep=0pt}
+
+\begin{document}
+
+% ================= HEADER =================
+\begin{headerbox}
+  \begin{center}
+    {\LARGE\bfseries\textcolor{white}{Object Detection: From Hand-Crafted Features to Transformers}}\\[2mm]
+    {\normalsize\textcolor{white}{Kumar Prateek}}\\[1mm]
+    {\small\textcolor{white}{Indian Institute of Information Technology, Allahabad}}
+  \end{center}
+\end{headerbox}
+
+\begin{multicols}{2}
+
+% ================= LEFT COLUMN =================
+\begin{sectionbox}{MOTIVATION \& KEY IDEA}
+\small
+Object detection outputs \textbf{class labels} and \textbf{bounding boxes}. Progress is best seen as pushing the \textbf{speed--precision frontier} outward:
+\begin{itemize}
+\item \textbf{Precision (mAP):} fewer false alarms and tighter localization.
+\item \textbf{Speed (FPS):} real-time throughput for video, robotics, and edge AI.
+\item \textbf{Engineering reality:} memory bandwidth, power, and post-processing often dominate deployment.
+\end{itemize}
+\textbf{Takeaway:} there is no universal ``best'' detector. The right model depends on latency budget, power limits, and acceptable error.
+\end{sectionbox}
+
+\begin{sectionbox}{EVOLUTION TIMELINE}
+\small
+\textbf{Traditional era (pre-2012).} Sliding windows + hand-crafted descriptors (Haar/HOG) + shallow classifiers. Effective for constrained settings (e.g., faces), but limited under occlusion and long-tail variation.
+
+\textbf{Deep learning shift (2012).} CNNs learned features directly from data, surpassing manual descriptors on large-scale benchmarks.
+
+\textbf{Two-stage detectors (R-CNN $\rightarrow$ Faster R-CNN).}
+Proposals first, then refine/classify per proposal. Strong mAP, especially on small objects, but sequential stages reduce FPS.
+
+\textbf{One-stage detectors (SSD/YOLO family).}
+Dense prediction in one pass. Historically faster but faced optimization issues from extreme background dominance.
+
+\textbf{Transformers (DETR family).}
+End-to-end set prediction with attention and Hungarian matching; reduces reliance on anchors and (in principle) NMS.
+\end{sectionbox}
+
+\begin{sectionbox}{KEY CONCEPTS}
+\small
+\textbf{Class imbalance in dense detection.}
+One-stage heads evaluate thousands of locations; most are background. Easy negatives can dominate gradients and suppress learning on rare positives (e.g., small objects).
+
+\textbf{Focal Loss (RetinaNet).} Reweights easy negatives:
+\[
+FL(p_t) = -\alpha_t (1 - p_t)^\gamma \log(p_t)
+\]
+This helps one-stage detectors close the accuracy gap while retaining speed.
+
+\textbf{Set prediction in DETR.}
+Instead of generating many boxes then pruning, DETR predicts a fixed-size set and enforces one-to-one assignment during training, discouraging duplicates.
+\end{sectionbox}
+
+\begin{sectionbox}{FUTURE DIRECTIONS}
+\small
+\begin{itemize}
+\item \textbf{Edge AI / TinyML:} pruning, quantization (INT8/INT4), distillation, hardware-aware design.
+\item \textbf{3D detection:} LiDAR--camera fusion and BEV representations.
+\item \textbf{Open-vocabulary:} language-guided detection for unseen categories.
+\end{itemize}
+\end{sectionbox}
+
+% ================= RIGHT COLUMN =================
+\begin{sectionbox}{SOTA COMPARISON TABLE}
+\small
+Values are representative (hardware, input size, and inference settings change results). Use consistent settings when reporting.
+
+\vspace{1mm}
+\centering
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{mAP} & \textbf{FPS} & \textbf{GFLOPs} & \textbf{Params (M)} \\
+\midrule
+Faster R-CNN & 42.0 & 26 & 246 & 60.1 \\
+SSD512       & 29.8 & 61 & 90  & 26.3 \\
+DETR         & 42.0 & 38 & 86  & 41.3 \\
+YOLOv8-L     & 46.8 & 97 & 165 & 43.7 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.8mm}
+\raggedright
+\scriptsize
+\textbf{Interpretation:} two-stage tends to maximize mAP at the cost of latency; modern YOLO variants often provide the best balanced point; DETR changes the pipeline with attention and set prediction.
+\end{sectionbox}
+
+\begin{sectionbox}{DECISION GUIDE (WHEN TO USE WHAT)}
+\small
+\textbf{Two-stage (Faster R-CNN):}
+\begin{itemize}
+\item Choose when \textbf{accuracy dominates} (small objects, crowded scenes).
+\item Suitable if higher latency/compute per frame is acceptable.
+\end{itemize}
+
+\textbf{One-stage (YOLO/SSD):}
+\begin{itemize}
+\item Choose for \textbf{real-time} video, edge devices, multi-camera streams.
+\item Strong default baseline for best accuracy-per-latency.
+\end{itemize}
+
+\textbf{Transformer-based (DETR-style):}
+\begin{itemize}
+\item Choose for \textbf{end-to-end set prediction} and \textbf{global context}.
+\item Often attractive in research and multi-task perception stacks.
+\end{itemize}
+\end{sectionbox}
+
+\begin{sectionbox}{DEPLOYMENT CHECKLIST}
+\footnotesize
+\textbf{Quick selection matrix:}
+
+\vspace{0.8mm}
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Need} & \textbf{Two-stage} & \textbf{One-stage} & \textbf{DETR} \\
+\midrule
+Max mAP / recall        & \textbf{High} & Med--High & High \\
+Real-time FPS           & Low--Med & \textbf{High} & Med \\
+Small objects / crowd   & \textbf{High} & Med--High & Med \\
+Simpler pipeline        & Med & Med & \textbf{High} \\
+Edge deployment         & Low--Med & \textbf{High} & Med \\
+Anchor/NMS sensitivity  & Med & High & \textbf{Lower} \\
+\bottomrule
+\end{tabular}
+
+\vspace{1mm}
+\raggedright
+\textbf{What changes results:}
+\begin{itemize}
+\item \textbf{Resolution:} helps small objects but reduces FPS.
+\item \textbf{Post-processing:} NMS can bottleneck at high candidate counts.
+\item \textbf{Precision mode:} FP16/INT8 improves throughput.
+\item \textbf{Domain shift:} lighting/weather/camera changes reduce mAP.
+\item \textbf{Thresholds:} tune for precision vs recall per application.
+\end{itemize}
+\end{sectionbox}
+
+\begin{sectionbox}{CONCLUSION}
+\small
+\begin{itemize}
+\item Detection moved from \textbf{engineered features} to \textbf{learned representations}.
+\item Best gains come from shifting the \textbf{frontier outward} (better mAP at same FPS).
+\item \textbf{Model choice is deployment-dependent:} start from constraints, then choose an architecture family.
+\item Practical workflow: start with \textbf{modern YOLO}; move to \textbf{two-stage} for maximum accuracy or \textbf{DETR-style} for end-to-end/global reasoning.
+\end{itemize}
+\end{sectionbox}
+
+\begin{sectionbox}{SELECTED REFERENCES}
+\begingroup
+\fontsize{6.6}{7.2}\selectfont
+\setlength{\parskip}{0pt}
+\begin{enumerate}
+\item Viola \& Jones, ``Rapid object detection using a boosted cascade of simple features,'' CVPR 2001.
+\item Dalal \& Triggs, ``Histograms of oriented gradients for human detection,'' CVPR 2005.
+\item Felzenszwalb et al., ``Object detection with discriminatively trained part-based models,'' PAMI 2010.
+\item Girshick et al., ``Rich feature hierarchies for accurate object detection,'' CVPR 2014.
+\item Ren et al., ``Faster R-CNN: Towards real-time object detection,'' NeurIPS 2015.
+\item Redmon et al., ``You only look once: Unified, real-time object detection,'' CVPR 2016.
+\item Liu et al., ``SSD: Single shot multibox detector,'' ECCV 2016.
+\item Lin et al., ``Focal loss for dense object detection,'' ICCV 2017.
+\item Carion et al., ``End-to-end object detection with transformers,'' ECCV 2020.
+\end{enumerate}
+\endgroup
+\end{sectionbox}
+
+\end{multicols}
+\end{document}
