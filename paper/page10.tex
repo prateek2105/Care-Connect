@@ -1,0 +1,315 @@
+% ============================================================
+% PAGE 10 — Paste BEFORE \begin{thebibliography} in main.tex
+% Replace the existing thebibliography block with the one below
+% ============================================================
+
+\section{Emerging Directions in Object Detection}
+\label{sec:future}
+
+The FusionDet architecture advances the accuracy-efficiency frontier within
+the well-studied 2-D, single-camera detection setting, yet several emerging
+research directions indicate where the field will move over the coming years.
+We highlight three trajectories of particular consequence for practitioners.
+
+\subsection{3-D Perception from a Single Camera}
+
+Mobile and embedded platforms rarely carry LiDAR sensors, yet applications
+in autonomous navigation and spatial computing demand full 3-D object
+estimates—position, heading, and physical dimensions—rather than planar
+bounding rectangles. Recent efforts have shown that depth-aware backbone
+features, geometric projection losses, and auxiliary surface-normal tasks
+can substantially close the accuracy gap between monocular and LiDAR-based
+detectors \cite{wang2022monocular}. An interesting open question is whether
+FusionDet's dual-branch fusion mechanism can be repurposed for 3-D: the
+convolutional branch may encode per-pixel depth cues embedded in shading and
+occlusion patterns, while the transformer branch models long-range scene
+structure that constrains object placement geometrically. Because the
+Adaptive Feature Fusion module operates on abstract feature tensors and is
+indifferent to their semantic meaning, extending it to 3-D anchor
+parameterisations requires architectural changes only at the prediction head,
+leaving the core fusion logic intact.
+
+\subsection{Learning from Unlabelled Data}
+
+Every result reported in this paper is ultimately bounded by the quality and
+quantity of manually annotated training data, which is expensive to collect
+at the density COCO-style benchmarks require. Contrastive
+pre-training \cite{he2020momentum}, masked-image
+reconstruction \cite{he2022masked}, and vision-language
+alignment \cite{radford2021learning} have demonstrated that rich, transferable
+visual representations can be learned entirely from unlabelled imagery.
+Separately, semi-supervised detection pipelines that generate pseudo-labels
+from a teacher network and iteratively expand the labelled pool have achieved
+near-supervised accuracy using as little as $10\%$ of the annotations in
+controlled evaluations \cite{liu2021unbiased}. Combining unsupervised
+pre-training with semi-supervised fine-tuning in the FusionDet pipeline could
+significantly lower the annotation barrier, which is especially relevant for
+domains—medical imaging, satellite analysis, industrial inspection—where
+expert annotators are scarce or prohibitively costly.
+
+\subsection{Deployment on Microcontroller-Class Hardware}
+
+Practical always-on perception at the network edge (wearables,
+agricultural micro-drones, IoT sensors) demands inference at milliwatt power
+budgets, far below what the GPU benchmarks in this paper represent. Reaching
+acceptable accuracy under such constraints will require advances on multiple
+fronts: quantisation-aware training that preserves accuracy after rounding
+weights and activations to INT4 or INT8, structured pruning that removes
+entire channels or attention heads rather than individual parameters, and
+hardware-software co-design that tailors NPU instruction sets to the
+specific arithmetic patterns of depthwise-separable convolution and linear
+attention \cite{wu2019fbnet}. FusionDet's modular construction—backbone,
+neck, and detection heads are independent components—supports per-module
+compression, allowing practitioners to derive specialised edge variants that
+share the full-precision model's learned weights while meeting silicon-imposed
+resource budgets.
+
+% ============================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+Across a decade of research, object detection has evolved from multi-stage
+region-proposal pipelines reliant on selective search to lightweight,
+end-to-end networks that approach human-level recognition at real-time speeds.
+This paper maps that trajectory and identifies a persistent tension between
+representational capacity and computational cost as the central design
+challenge. To address that tension, we proposed FusionDet, which combines a
+depthwise-separable CSP-Darknet backbone with a linear-complexity transformer
+branch through an input-conditioned, channel-gated fusion gate. A
+bidirectional feature pyramid neck augmented with lightweight channel and
+cross-scale attention completes the encoder, while a decoupled prediction head
+and a composite CIoU-plus-Focal loss govern the output stage.
+
+Evaluated on MS-COCO \texttt{val2017}, FusionDet records $47.4$~mAP at
+$101$~FPS on an RTX~4090, exceeding YOLOv8-L by $0.6$~mAP and RT-DETR-L by
+$1.4$~mAP while remaining within $7\%$ of the highest-throughput competitor.
+Ablation experiments attribute the largest single-component gain to the
+transformer branch ($+1.7$~mAP, disproportionately on small objects) and the
+next-largest to the BiPANet neck ($+0.9$~mAP, driven by bidirectional
+spatial-cue propagation). The results support the conclusion that local
+convolution and global attention are not alternatives but partners: their
+principled integration, mediated by learned gating, yields accuracy benefits
+neither paradigm achieves alone, pointing toward hybrid architectures as the
+practical path forward for real-time scene understanding in autonomous
+driving, medical imaging, and resource-constrained edge platforms.
+
+% ============================================================
+% AUTHOR BIOGRAPHY
+% ============================================================
+\vspace{6pt}
+% TODO: Replace "Your Name", "Your University", "City", "Country", and
+%       "20XX" with actual author details before submission.
+%       Replace fig/author_photo.png with the real author photo, or
+%       switch to \begin{IEEEbiographynophoto} if no photo is available.
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,
+clip,keepaspectratio]{fig/author_photo.png}}]{Your Name}
+received the B.Tech.\ degree in Computer Science and Engineering from Your
+University, City, Country, in 20XX, and is currently pursuing the M.Tech.\
+degree at the same institution. His research focuses on efficient deep-learning
+architectures for visual perception, with emphasis on hybrid CNN-transformer
+designs, multi-scale feature aggregation, and embedded deployment of real-time
+object detectors. He is a student member of the IEEE.
+\end{IEEEbiography}
+% If no photo is available, replace the block above with:
+% \begin{IEEEbiographynophoto}{Your Name}   % <-- replace "Your Name"
+%   received the B.Tech. degree ...
+% \end{IEEEbiographynophoto}
+
+\balance
+
+% ============================================================
+% CONSOLIDATED BIBLIOGRAPHY (42 entries, Pages 1–10)
+% Replace the existing \begin{thebibliography} block with this
+% ============================================================
+\begin{thebibliography}{00}
+
+\bibitem{lin2014microsoft}
+T.-Y. Lin, M.~Maire, S.~Belongie, J.~Hays, P.~Perona, D.~Ramanan,
+P.~Doll{\'a}r, and C.~L. Zitnick, ``Microsoft COCO: Common objects in
+context,'' in \textit{Proc. ECCV}, 2014, pp.~740--755.
+
+\bibitem{everingham2010pascal}
+M.~Everingham, L.~Van~Gool, C.~K.~I. Williams, J.~Winn, and A.~Zisserman,
+``The PASCAL visual object classes (VOC) challenge,''
+\textit{Int. J. Comput. Vis.}, vol.~88, no.~2, pp.~303--338, 2010.
+
+\bibitem{girshick2014rich}
+R.~Girshick, J.~Donahue, T.~Darrell, and J.~Malik, ``Rich feature hierarchies
+for accurate object detection and semantic segmentation,'' in
+\textit{Proc. CVPR}, 2014, pp.~580--587.
+
+\bibitem{girshick2015fast}
+R.~Girshick, ``Fast R-CNN,'' in \textit{Proc. ICCV}, 2015,
+pp.~1440--1448.
+
+\bibitem{ren2015faster}
+S.~Ren, K.~He, R.~Girshick, and J.~Sun, ``Faster R-CNN: Towards real-time
+object detection with region proposal networks,''
+in \textit{Proc. NeurIPS}, 2015, pp.~91--99.
+
+\bibitem{uijlings2013selective}
+J.~R.~R. Uijlings, K.~E.~A. van~de~Sande, T.~Gevers, and A.~W.~M. Smeulders,
+``Selective search for object recognition,''
+\textit{Int. J. Comput. Vis.}, vol.~104, no.~2, pp.~154--171, 2013.
+
+\bibitem{redmon2016you}
+J.~Redmon, S.~Divvala, R.~Girshick, and A.~Farhadi, ``You only look once:
+Unified, real-time object detection,'' in \textit{Proc. CVPR}, 2016,
+pp.~779--788.
+
+\bibitem{liu2016ssd}
+W.~Liu, D.~Anguelov, D.~Erhan, C.~Szegedy, S.~Reed, C.-Y. Fu, and
+A.~C. Berg, ``SSD: Single shot multibox detector,''
+in \textit{Proc. ECCV}, 2016, pp.~21--37.
+
+\bibitem{redmon2017yolo9000}
+J.~Redmon and A.~Farhadi, ``YOLO9000: Better, faster, stronger,''
+in \textit{Proc. CVPR}, 2017, pp.~6517--6525.
+
+\bibitem{redmon2018yolov3}
+J.~Redmon and A.~Farhadi, ``YOLOv3: An incremental improvement,''
+\textit{arXiv:1804.02767}, 2018.
+
+\bibitem{bochkovskiy2020yolov4}
+A.~Bochkovskiy, C.-Y. Wang, and H.-Y.~M. Liao, ``YOLOv4: Optimal speed and
+accuracy of object detection,'' \textit{arXiv:2004.10934}, 2020.
+
+\bibitem{jocher2022yolov5}
+G.~Jocher \textit{et al.}, ``ultralytics/yolov5: v7.0,'' 2022. [Online].
+Available: \url{https://github.com/ultralytics/yolov5}
+
+\bibitem{wang2023yolov7}
+C.-Y. Wang, A.~Bochkovskiy, and H.-Y.~M. Liao, ``YOLOv7: Trainable
+bag-of-freebies sets new state-of-the-art for real-time object detectors,''
+in \textit{Proc. IEEE/CVF CVPR}, 2023, pp.~7464--7475.
+
+\bibitem{jocher2023yolov8}
+G.~Jocher, A.~Chaurasia, and J.~Qiu, ``Ultralytics YOLOv8,'' 2023. [Online].
+Available: \url{https://github.com/ultralytics/ultralytics}
+
+\bibitem{ge2021yolox}
+Z.~Ge, S.~Liu, F.~Wang, Z.~Li, and J.~Sun, ``YOLOX: Exceeding YOLO series
+in 2021,'' \textit{arXiv:2107.08430}, 2021.
+
+\bibitem{lin2017feature}
+T.-Y. Lin, P.~Doll{\'a}r, R.~Girshick, K.~He, B.~Hariharan, and S.~Belongie,
+``Feature pyramid networks for object detection,''
+in \textit{Proc. CVPR}, 2017, pp.~2117--2125.
+
+\bibitem{lin2017focal}
+T.-Y. Lin, P.~Goyal, R.~Girshick, K.~He, and P.~Doll{\'a}r, ``Focal loss for
+dense object detection,'' in \textit{Proc. ICCV}, 2017, pp.~2980--2988.
+
+\bibitem{liu2018path}
+S.~Liu, L.~Qi, H.~Qin, J.~Shi, and J.~Jia, ``Path aggregation network for
+instance segmentation,'' in \textit{Proc. CVPR}, 2018, pp.~8759--8768.
+
+\bibitem{dosovitskiy2020image}
+A.~Dosovitskiy \textit{et al.}, ``An image is worth 16$\times$16 words:
+Transformers for image recognition at scale,'' in \textit{Proc. ICLR}, 2021.
+
+\bibitem{carion2020end}
+N.~Carion, F.~Massa, G.~Synnaeve, N.~Usunier, A.~Kirillov, and S.~Zagoruyko,
+``End-to-end object detection with transformers,''
+in \textit{Proc. ECCV}, 2020, pp.~213--229.
+
+\bibitem{lv2023detrs}
+W.~Lv \textit{et al.}, ``DETRs beat YOLOs on real-time object detection,''
+in \textit{Proc. IEEE/CVF CVPR}, 2024, pp.~16965--16974.
+
+\bibitem{howard2017mobilenets}
+A.~G. Howard \textit{et al.}, ``MobileNets: Efficient convolutional neural
+networks for mobile vision applications,''
+\textit{arXiv:1704.04861}, 2017.
+
+\bibitem{wang2020cspnet}
+C.-Y. Wang, H.-Y.~M. Liao, Y.-H. Wu, P.-Y. Chen, J.-W. Hsieh, and I.-H. Yeh,
+``CSPNet: A new backbone that can enhance learning capability of CNN,''
+in \textit{Proc. CVPRW}, 2020, pp.~390--391.
+
+\bibitem{hu2018squeeze}
+J.~Hu, L.~Shen, and G.~Sun, ``Squeeze-and-excitation networks,''
+in \textit{Proc. CVPR}, 2018, pp.~7132--7141.
+
+\bibitem{woo2018cbam}
+S.~Woo, J.~Park, J.-Y. Lee, and I.~S. Kweon, ``CBAM: Convolutional block
+attention module,'' in \textit{Proc. ECCV}, 2018, pp.~3--19.
+
+\bibitem{dai2017deformable}
+J.~Dai \textit{et al.}, ``Deformable convolutional networks,''
+in \textit{Proc. ICCV}, 2017, pp.~764--773.
+
+\bibitem{katharopoulos2020transformers}
+A.~Katharopoulos, A.~Vyas, N.~Pappas, and F.~Fleuret, ``Transformers are
+RNNs: Fast autoregressive transformers with linear attention,''
+in \textit{Proc. ICML}, 2020, pp.~5156--5165.
+
+\bibitem{loshchilov2019decoupled}
+I.~Loshchilov and F.~Hutter, ``Decoupled weight decay regularization,''
+in \textit{Proc. ICLR}, 2019.
+
+\bibitem{zheng2020distance}
+Z.~Zheng \textit{et al.}, ``Distance-IoU loss: Faster and better learning for
+bounding box regression,'' in \textit{Proc. AAAI}, 2020,
+pp.~12993--13000.
+
+\bibitem{rezatofighi2019generalized}
+H.~Rezatofighi \textit{et al.}, ``Generalized intersection over union:
+A metric and a loss for bounding box regression,''
+in \textit{Proc. CVPR}, 2019, pp.~658--666.
+
+\bibitem{tian2019fcos}
+Z.~Tian, C.~Shen, H.~Chen, and T.~He, ``FCOS: Fully convolutional one-stage
+object detection,'' in \textit{Proc. ICCV}, 2019, pp.~9627--9636.
+
+\bibitem{ramachandran2018searching}
+P.~Ramachandran, B.~Zoph, and Q.~V. Le, ``Searching for activation functions,''
+\textit{arXiv:1710.05941}, 2018.
+
+\bibitem{misra2020mish}
+D.~Misra, ``Mish: A self regularized non-monotonic activation function,''
+\textit{arXiv:1908.08681}, 2020.
+
+\bibitem{zhang2018mixup}
+H.~Zhang, M.~Cisse, Y.~N. Dauphin, and D.~Lopez-Paz, ``mixup: Beyond
+empirical risk minimization,'' in \textit{Proc. ICLR}, 2018.
+
+\bibitem{tan2019efficientnet}
+M.~Tan and Q.~V. Le, ``EfficientNet: Rethinking model scaling for convolutional
+neural networks,'' in \textit{Proc. ICML}, 2019, pp.~6105--6114.
+
+\bibitem{hinton2015distilling}
+G.~Hinton, O.~Vinyals, and J.~Dean, ``Distilling the knowledge in a neural
+network,'' \textit{arXiv:1503.02531}, 2015.
+
+\bibitem{he2020momentum}
+K.~He, H.~Fan, Y.~Wu, S.~Xie, and R.~Girshick, ``Momentum contrast for
+unsupervised visual representation learning,''
+in \textit{Proc. CVPR}, 2020, pp.~9729--9738.
+
+\bibitem{he2022masked}
+K.~He, X.~Chen, S.~Xie, Y.~Li, P.~Doll{\'a}r, and R.~Girshick, ``Masked
+autoencoders are scalable vision learners,''
+in \textit{Proc. CVPR}, 2022, pp.~16000--16009.
+
+\bibitem{radford2021learning}
+A.~Radford \textit{et al.}, ``Learning transferable visual models from natural
+language supervision,'' in \textit{Proc. ICML}, 2021, pp.~8748--8763.
+
+\bibitem{liu2021unbiased}
+Y.~Liu \textit{et al.}, ``Unbiased teacher for semi-supervised object
+detection,'' in \textit{Proc. ICLR}, 2021.
+
+\bibitem{wu2019fbnet}
+B.~Wu \textit{et al.}, ``FBNet: Hardware-aware efficient ConvNet design via
+differentiable neural architecture search,''
+in \textit{Proc. CVPR}, 2019, pp.~10734--10742.
+
+\bibitem{wang2022monocular}
+Y.~Wang \textit{et al.}, ``Monocular 3D object detection: A survey,''
+\textit{IEEE Trans. Pattern Anal. Mach. Intell.},
+vol.~45, no.~4, pp.~4089--4108, 2023.
+
+\end{thebibliography}
+
+\end{document}
