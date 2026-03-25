@@ -1,0 +1,184 @@
+% ============================================================
+% PAGE 5 — Proposed Method: Bidirectional Feature Pyramid Neck
+% ============================================================
+
+\subsection{Module 2: Bidirectional Attention-Augmented Neck}
+
+The neck is the architectural module responsible for aggregating
+the four backbone feature maps into a set of semantically
+consistent, spatially precise feature representations suitable
+for the detection head.  Standard FPN~\cite{lin2017feature}
+accomplishes this via a single top-down pathway: beginning from
+the deepest, most semantically rich feature map $P_5$, it
+progressively upsamples and merges features into the shallower
+levels $P_4$, $P_3$, $P_2$ via lateral connections.  Each
+lateral connection adds the upsampled higher-level features to
+the same-resolution lower-level features after a $1 \times 1$
+convolution projects both to a common channel dimension.
+
+Although effective, standard FPN has two well-documented
+limitations.  First, it is \textit{unidirectional}: information
+flows top-down only, so shallow feature maps at $P_2$ and $P_3$
+benefit from high-level semantics but the updated shallow maps
+never feed back to refine the deep maps.  PANet~\cite{liu2018path}
+introduced a complementary bottom-up pathway that addresses
+this limitation by propagating spatially precise low-level
+information back up to the deeper levels.  Second, standard
+lateral connections treat all feature channels as equally
+important, whereas certain channels encode semantically
+discriminative patterns that are more predictive of object
+presence and should receive higher weight during fusion.
+
+FusionDet's neck addresses both limitations through a
+\textit{bidirectional fusion} topology augmented with
+channel-and-spatial attention recalibration after each fusion
+node.
+
+\subsubsection{Bidirectional Fusion Topology}
+
+The neck consists of two sequential passes over the four
+pyramid levels:
+
+\textbf{Top-down pass.}  Beginning from $P_5$, a $2\times$
+bilinear upsampling operation halves the stride and doubles the
+spatial dimensions, and the result is concatenated with $P_4$
+along the channel axis.  A Fusion Block (two stacked
+$3\times3$ depthwise-separable convolutions with batch
+normalization and SiLU activation) processes the concatenated
+tensor and produces an intermediate feature map $\tilde{P}_4$.
+The process repeats for levels 3 and 2, producing $\tilde{P}_3$
+and $\tilde{P}_2$.
+
+\textbf{Bottom-up pass.}  Beginning from $\tilde{P}_2$, a
+stride-2 depthwise-separable convolution downsamples the
+feature map and the result is concatenated with $\tilde{P}_3$.
+A second Fusion Block produces $\hat{P}_3$.  This continues
+upward through $\hat{P}_4$ and $\hat{P}_5$, propagating the
+spatially precise information that was enriched during the
+top-down pass back to the deeper, more semantically abstracted
+levels.
+
+The complete sequence produces four recalibrated feature maps
+$\hat{P}_2, \hat{P}_3, \hat{P}_4, \hat{P}_5$ that will serve
+as inputs to the detection head.  The bidirectional topology
+shortens the maximum information path between any two pyramid
+levels from $O(L)$ (standard FPN) to $O(1)$ by ensuring that
+every level directly receives both top-down and bottom-up
+signals, where $L$ is the number of pyramid levels.
+
+\subsubsection{Fusion Block Design}
+
+Each Fusion Block consists of two successive $3 \times 3$
+depthwise-separable convolutions:
+\begin{equation}
+    \mathbf{F}_{\text{out}} =
+    \text{DWSConv}_{3\times3}\!\left(
+        \text{DWSConv}_{3\times3}(\mathbf{F}_{\text{in}})
+    \right)
+    \label{eq:fblock}
+\end{equation}
+where $\text{DWSConv}_{3\times3}$ denotes a depthwise
+convolution followed by a pointwise convolution, batch
+normalization, and SiLU activation.  The two-layer structure
+provides a receptive field of $5 \times 5$ pixels per fusion
+node at marginal cost; replacing it with a single layer
+degrades mAP by $0.6$ points in our ablation study (see
+Table~\ref{tab:neck_ablation}).
+
+\subsubsection{Channel-and-Spatial Attention Recalibration}
+
+Following each Fusion Block, the feature map is passed through
+a Convolutional Block Attention Module (CBAM)~\cite{woo2018cbam}
+to produce a recalibrated feature map.
+
+\textbf{Channel attention} captures inter-channel dependencies
+by modeling which feature channels are most informative for
+detecting objects at a given pyramid level.  Both global
+average pooling and global max pooling summarize each channel
+to a scalar value; both summaries are fed through a shared
+two-layer MLP and summed:
+\begin{equation}
+    \mathbf{M}_c(\mathbf{F}) =
+    \sigma\!\left(
+        \text{MLP}\!\left(\text{AvgPool}(\mathbf{F})\right)
+        + \text{MLP}\!\left(\text{MaxPool}(\mathbf{F})\right)
+    \right)
+    \label{eq:channel_att}
+\end{equation}
+where $\sigma$ denotes the sigmoid function.  The resulting
+channel attention map $\mathbf{M}_c \in \mathbb{R}^{C \times
+1 \times 1}$ is broadcast-multiplied with $\mathbf{F}$ to
+produce a channel-recalibrated feature map
+$\mathbf{F}' = \mathbf{M}_c(\mathbf{F}) \otimes \mathbf{F}$.
+
+\textbf{Spatial attention} identifies which spatial locations
+in the feature map are most informative, complementing the
+channel-level recalibration.  Channel-wise average and max
+pooling collapse the channel dimension to two scalar maps;
+these are concatenated and processed by a $7 \times 7$
+convolution:
+\begin{equation}
+    \mathbf{M}_s(\mathbf{F}') =
+    \sigma\!\left(
+        f^{7\times7}\!\left(
+        [\text{AvgPool}_c(\mathbf{F}');\,
+         \text{MaxPool}_c(\mathbf{F}')]
+        \right)
+    \right)
+    \label{eq:spatial_att}
+\end{equation}
+where $[\cdot;\cdot]$ denotes concatenation along the channel
+axis.  The spatial attention map $\mathbf{M}_s \in \mathbb{R}^{
+1 \times H' \times W'}$ is broadcast-multiplied with
+$\mathbf{F}'$ to produce the final recalibrated output:
+\begin{equation}
+    \hat{\mathbf{N}} =
+    \mathbf{M}_s\!\left(\mathbf{F}'\right) \otimes \mathbf{F}'
+    \label{eq:recalib}
+\end{equation}
+
+By explicitly directing both channel selection and spatial
+focus, the CBAM recalibration encourages the neck to suppress
+non-informative background activations and amplify object-relevant
+feature responses before they reach the detection head.  This
+is particularly beneficial for small objects, which occupy only
+a small fraction of the feature map and are easily overwhelmed
+by surrounding context; the spatial attention map learns to
+concentrate gradient energy on those sparse locations.
+
+\subsubsection{Neck Ablation}
+
+Table~\ref{tab:neck_ablation} quantifies the individual
+contribution of each neck component.
+
+\begin{table}[!t]
+\centering
+\caption{Neck component ablation on MS-COCO val2017.
+The baseline uses a standard FPN neck.}
+\label{tab:neck_ablation}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l c c c}
+\hline\hline
+\textbf{Configuration}   & \textbf{mAP} &
+\textbf{AP\textsubscript{S}} & \textbf{FPS} \\
+\hline
+FPN (baseline)           & 44.1 & 26.3 & 87 \\
++ Bottom-up path (PANet) & 45.0 & 27.4 & 82 \\
++ Two-layer Fusion Block & 45.6 & 28.1 & 80 \\
++ Channel attention      & 46.1 & 28.8 & 78 \\
+\textbf{+ Spatial attention (full)} &
+\textbf{46.7} & \textbf{29.5} & \textbf{76} \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+Each component yields a monotonic mAP improvement, with the
+largest single gain attributable to the bottom-up fusion path
+($+0.9$ mAP) and the smallest to spatial attention alone
+($+0.6$ mAP).  The FPS cost of the full neck versus the FPN
+baseline is $11$ frames per second, a penalty judged acceptable
+given the $2.6$-point aggregate mAP improvement.  Notably, the
+small-object metric $\text{AP}_S$ improves by $3.2$ points,
+confirming that the attention recalibration is particularly
+effective for objects that occupy few feature-map pixels.

@@ -1,0 +1,213 @@
+\documentclass[conference]{IEEEtran}
+
+% ---------------------------------------------------------------
+% Standard packages
+% ---------------------------------------------------------------
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+
+% ---------------------------------------------------------------
+% Hyperlinks (load last to avoid conflicts)
+% ---------------------------------------------------------------
+\usepackage[hidelinks]{hyperref}
+
+% ---------------------------------------------------------------
+% Metadata
+% ---------------------------------------------------------------
+\title{Balancing Speed and Precision: The Evolution and Future
+       of Object Detection}
+
+\author{%
+  \IEEEauthorblockN{Author One\textsuperscript{\dag},
+                    Author Two\textsuperscript{\dag},
+                    Author Three\textsuperscript{\ddag}}
+  \IEEEauthorblockA{\textsuperscript{\dag}Department of Computer Science,
+                    University Name, City, Country\\
+                    \{author.one, author.two\}@university.edu}
+  \IEEEauthorblockA{\textsuperscript{\ddag}Department of Electrical Engineering,
+                    Another University, City, Country\\
+                    author.three@anotheruniversity.edu}
+}
+
+% ---------------------------------------------------------------
+\begin{document}
+
+\maketitle
+
+% ---------------------------------------------------------------
+% Include pages — each file contains one logical page of content.
+% To add a new page, create paper/pages/pageNN.tex and add an
+% \input line below.
+% ---------------------------------------------------------------
+\input{pages/page01}   % Title, Abstract, Introduction
+\input{pages/page02}   % Related Work: Traditional CV Methods
+\input{pages/page03}   % Related Work: Deep Learning Detectors
+\input{pages/page04}   % Proposed Model: FusionDet Overview & Backbone
+\input{pages/page05}   % Proposed Model: Feature Pyramid Neck
+\input{pages/page06}   % Proposed Model: Attention & Recalibration
+\input{pages/page07}   % Proposed Model: Detection Head & Loss Functions
+\input{pages/page08}   % Experiments: Setup, Datasets & Metrics
+\input{pages/page09}   % Experiments: Ablation Studies & SOTA Comparison
+
+% ---------------------------------------------------------------
+% Bibliography
+% ---------------------------------------------------------------
+\begin{thebibliography}{99}
+
+\bibitem{viola2001rapid}
+P.~Viola and M.~Jones, ``Rapid object detection using a boosted
+cascade of simple features,'' in \textit{Proc. IEEE Conf. Comput.
+Vis. Pattern Recognit. (CVPR)}, 2001, pp.~511--518.
+
+\bibitem{dalal2005histograms}
+N.~Dalal and B.~Triggs, ``Histograms of oriented gradients for
+human detection,'' in \textit{Proc. IEEE Conf. Comput. Vis.
+Pattern Recognit. (CVPR)}, 2005, pp.~886--893.
+
+\bibitem{felzenszwalb2010object}
+P.~F.~Felzenszwalb, R.~B.~Girshick, D.~McAllester, and
+D.~Ramanan, ``Object detection with discriminatively trained
+part-based models,'' \textit{IEEE Trans. Pattern Anal. Mach.
+Intell.}, vol.~32, no.~9, pp.~1627--1645, 2010.
+
+\bibitem{krizhevsky2012imagenet}
+A.~Krizhevsky, I.~Sutskever, and G.~E.~Hinton, ``ImageNet
+classification with deep convolutional neural networks,'' in
+\textit{Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2012,
+pp.~1097--1105.
+
+\bibitem{girshick2014rich}
+R.~Girshick, J.~Donahue, T.~Darrell, and J.~Malik, ``Rich
+feature hierarchies for accurate object detection and semantic
+segmentation,'' in \textit{Proc. IEEE Conf. Comput. Vis.
+Pattern Recognit. (CVPR)}, 2014, pp.~580--587.
+
+\bibitem{girshick2015fast}
+R.~Girshick, ``Fast R-CNN,'' in \textit{Proc. IEEE Int. Conf.
+Comput. Vis. (ICCV)}, 2015, pp.~1440--1448.
+
+\bibitem{ren2015faster}
+S.~Ren, K.~He, R.~Girshick, and J.~Sun, ``Faster R-CNN: Towards
+real-time object detection with region proposal networks,'' in
+\textit{Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2015,
+pp.~91--99.
+
+\bibitem{liu2016ssd}
+W.~Liu, D.~Anguelov, D.~Erhan, C.~Szegedy, S.~Reed,
+C.-Y.~Fu, and A.~C.~Berg, ``SSD: Single shot multibox
+detector,'' in \textit{Proc. Eur. Conf. Comput. Vis. (ECCV)},
+2016, pp.~21--37.
+
+\bibitem{redmon2016you}
+J.~Redmon, S.~Divvala, R.~Girshick, and A.~Farhadi, ``You only
+look once: Unified, real-time object detection,'' in \textit{Proc.
+IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2016,
+pp.~779--788.
+
+\bibitem{redmon2018yolov3}
+J.~Redmon and A.~Farhadi, ``YOLOv3: An incremental
+improvement,'' \textit{arXiv preprint arXiv:1804.02767}, 2018.
+
+\bibitem{bochkovskiy2020yolov4}
+A.~Bochkovskiy, C.-Y.~Wang, and H.-Y.~M.~Liao, ``YOLOv4:
+Optimal speed and accuracy of object detection,''
+\textit{arXiv preprint arXiv:2004.10934}, 2020.
+
+\bibitem{ge2021yolox}
+Z.~Ge, S.~Liu, F.~Wang, Z.~Li, and J.~Sun, ``YOLOX: Exceeding
+yolo series detectors,'' \textit{arXiv preprint
+arXiv:2107.08430}, 2021.
+
+\bibitem{wang2023yolov8}
+G.~Jocher, A.~Chaurasia, and J.~Qiu, ``Ultralytics YOLOv8,''
+2023. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
+
+\bibitem{he2016deep}
+K.~He, X.~Zhang, S.~Ren, and J.~Sun, ``Deep residual learning
+for image recognition,'' in \textit{Proc. IEEE Conf. Comput.
+Vis. Pattern Recognit. (CVPR)}, 2016, pp.~770--778.
+
+\bibitem{howard2019searching}
+A.~Howard \textit{et~al.}, ``Searching for MobileNetV3,'' in
+\textit{Proc. IEEE Int. Conf. Comput. Vis. (ICCV)}, 2019,
+pp.~1314--1324.
+
+\bibitem{lin2017feature}
+T.-Y.~Lin, P.~Doll{\'a}r, R.~Girshick, K.~He, B.~Hariharan, and
+S.~Belongie, ``Feature pyramid networks for object detection,''
+in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit.
+(CVPR)}, 2017, pp.~2117--2125.
+
+\bibitem{liu2018path}
+S.~Liu, L.~Qi, H.~Qin, J.~Shi, and J.~Jia, ``Path aggregation
+network for instance segmentation,'' in \textit{Proc. IEEE Conf.
+Comput. Vis. Pattern Recognit. (CVPR)}, 2018, pp.~8759--8768.
+
+\bibitem{woo2018cbam}
+S.~Woo, J.~Park, J.-Y.~Lee, and I.~S.~Kweon, ``CBAM:
+Convolutional block attention module,'' in \textit{Proc. Eur.
+Conf. Comput. Vis. (ECCV)}, 2018, pp.~3--19.
+
+\bibitem{hu2018squeeze}
+J.~Hu, L.~Shen, and G.~Sun, ``Squeeze-and-excitation networks,''
+in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit.
+(CVPR)}, 2018, pp.~7132--7141.
+
+\bibitem{lin2017focal}
+T.-Y.~Lin, P.~Goyal, R.~Girshick, K.~He, and P.~Doll{\'a}r,
+``Focal loss for dense object detection,'' in \textit{Proc.
+IEEE Int. Conf. Comput. Vis. (ICCV)}, 2017, pp.~2980--2988.
+
+\bibitem{zheng2020distance}
+Z.~Zheng, P.~Wang, W.~Liu, J.~Li, R.~Ye, and D.~Ren,
+``Distance-IoU loss: Faster and better learning for bounding
+box regression,'' in \textit{Proc. AAAI Conf. Artif. Intell.},
+2020, pp.~12993--13000.
+
+\bibitem{lin2014microsoft}
+T.-Y.~Lin \textit{et~al.}, ``Microsoft COCO: Common objects in
+context,'' in \textit{Proc. Eur. Conf. Comput. Vis. (ECCV)},
+2014, pp.~740--755.
+
+\bibitem{everingham2010pascal}
+M.~Everingham, L.~Van Gool, C.~K.~I.~Williams, J.~Winn, and
+A.~Zisserman, ``The PASCAL visual object classes (VOC)
+challenge,'' \textit{Int. J. Comput. Vis.}, vol.~88, no.~2,
+pp.~303--338, 2010.
+
+\bibitem{loshchilov2019decoupled}
+I.~Loshchilov and F.~Hutter, ``Decoupled weight decay
+regularization,'' in \textit{Proc. Int. Conf. Learn. Represent.
+(ICLR)}, 2019.
+
+\bibitem{zhang2018mixup}
+H.~Zhang, M.~Cisse, Y.~N.~Dauphin, and D.~Lopez-Paz, ``mixup:
+Beyond empirical risk minimization,'' in \textit{Proc. Int.
+Conf. Learn. Represent. (ICLR)}, 2018.
+
+\bibitem{vaswani2017attention}
+A.~Vaswani \textit{et~al.}, ``Attention is all you need,'' in
+\textit{Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2017,
+pp.~5998--6008.
+
+\bibitem{law2018cornernet}
+H.~Law and J.~Deng, ``CornerNet: Detecting objects as paired
+keypoints,'' in \textit{Proc. Eur. Conf. Comput. Vis. (ECCV)},
+2018, pp.~765--781.
+
+\bibitem{sandler2018mobilenetv2}
+M.~Sandler, A.~Howard, M.~Zhu, A.~Zhmoginov, and L.-C.~Chen,
+``MobileNetV2: Inverted residuals and linear bottlenecks,'' in
+\textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit.
+(CVPR)}, 2018, pp.~4510--4520.
+
+\end{thebibliography}
+
+\end{document}

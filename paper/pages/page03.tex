@@ -1,0 +1,152 @@
+% ============================================================
+% PAGE 3 — Related Work: Deep Learning Detectors
+% ============================================================
+
+\subsection{Two-Stage Deep Learning Detectors}
+
+\subsubsection{R-CNN Family}
+
+Girshick \textit{et al.}~\cite{girshick2014rich} introduced
+Region-based CNN (R-CNN), the first detector to couple CNN
+features with region proposals.  Selective search generates
+approximately 2\,000 candidate regions per image; each region
+is warped to a fixed $227 \times 227$ pixel window and
+forwarded through an AlexNet-derived CNN to produce a 4\,096-dimensional
+feature vector, which a class-specific SVM then classifies.
+Although R-CNN substantially outperformed DPM on PASCAL VOC,
+its inference pipeline was glacially slow: approximately
+47 seconds per image on a GPU, because each of the 2\,000
+proposals required a separate CNN forward pass.
+
+Fast R-CNN~\cite{girshick2015fast} resolved the redundant
+computation by feeding the full image through the CNN once to
+produce a shared convolutional feature map, then projecting
+each proposal onto this map via the RoI Pooling operation.  A
+lightweight per-RoI network head simultaneously produces class
+scores and bounding-box regression offsets for all proposals in
+a single forward pass.  By replacing the independent per-patch
+CNNs with shared feature extraction, Fast R-CNN reduced
+inference time to $0.3$ seconds per image while improving
+accuracy.
+
+Faster R-CNN~\cite{ren2015faster} eliminated the external
+selective-search proposal algorithm by inserting a Region
+Proposal Network (RPN) that shares the convolutional backbone
+with the detection head.  The RPN slides a small network over
+the shared feature map, predicting, at each location, $k$
+anchor-box objectness scores and associated regression offsets.
+Alternating training of the RPN and the detection head allowed
+end-to-end optimization.  Faster R-CNN achieved 5--17 FPS
+at 73.2\% mAP on PASCAL VOC 2007---a milestone demonstrating
+that deep detection could be practical rather than merely
+accurate.  Subsequent variants---R-FCN, FPN-based Faster
+R-CNN, Cascade R-CNN---progressively improved accuracy to
+over 40 mAP on COCO by adding more sophisticated region
+classifiers and multi-scale feature fusion, but FPS remained
+limited by the inherently sequential two-stage computation.
+
+\subsection{Single-Stage Deep Learning Detectors}
+
+\subsubsection{SSD}
+
+Liu \textit{et al.}~\cite{liu2016ssd} proposed Single Shot
+MultiBox Detector (SSD), which eliminated the proposal stage
+entirely.  SSD places a set of default anchor boxes at every
+location of several feature maps extracted at different
+resolutions of the backbone; for each anchor, a small
+convolutional network predicts class probabilities and
+box offsets.  By producing all predictions in a single forward
+pass---without the sequential region-wise processing of
+two-stage methods---SSD achieved 59 FPS at 74.3 mAP on PASCAL
+VOC, demonstrating that real-time accuracy was attainable
+without a proposal network.  Its multi-scale anchor placement
+anticipated the later feature pyramid approach, though the
+features at different scales were extracted independently
+without top-down refinement.
+
+\subsubsection{YOLO Series}
+
+Redmon \textit{et al.}~\cite{redmon2016you} reformulated
+detection as a single regression from image pixels to box
+coordinates and class probabilities, implemented as a single
+CNN evaluated once per image.  YOLOv1 divided the image into a
+$7 \times 7$ grid; each cell predicted $B$ bounding boxes and
+$K$ class probabilities, yielding a fixed $S \times S \times
+(B \cdot 5 + K)$ output tensor.  The key insight was that
+removing the proposal stage allowed the entire detection system
+to be trained end-to-end with a single loss function,
+simplifying training and maximizing throughput.  YOLOv1
+achieved 45 FPS at 63.4 mAP---substantially below Faster
+R-CNN's accuracy, but establishing that extreme-throughput
+detection was feasible.
+
+YOLOv3~\cite{redmon2018yolov3} incorporated a Darknet-53
+backbone, multi-scale prediction at three feature-map
+resolutions, and anchor clustering, raising mAP to 33.0 on
+COCO while maintaining real-time throughput.  YOLOv4
+\cite{bochkovskiy2020yolov4} added a wide array of
+bag-of-freebies and bag-of-specials training techniques---mosaic
+augmentation, DropBlock, Mish activation, and a CSP backbone---
+achieving 43.5 mAP at 65 FPS on COCO with a single RTX 2080 Ti,
+a landmark result that substantially advanced the Pareto frontier.
+
+\subsubsection{YOLOX and Decoupled Heads}
+
+YOLOX~\cite{ge2021yolox} departed from the anchor-based
+paradigm of earlier YOLO variants.  By removing anchor
+definitions and adopting an anchor-free detection scheme,
+YOLOX simplified the matching between ground-truth objects and
+prediction locations.  Crucially, it introduced a
+\textit{decoupled head}---separate $1\times1$ convolutional
+sub-networks for classification and regression---resolving the
+representational conflict that arises when a shared head is
+asked to simultaneously optimize semantic discriminability and
+spatial precision.  YOLOX-x achieved 51.2 mAP on COCO-val,
+surpassing all prior YOLO variants while remaining real-time
+capable at input resolution $640 \times 640$.
+
+\subsubsection{YOLOv8}
+
+The YOLOv8 architecture~\cite{wang2023yolov8} further refined
+the single-stage paradigm with an updated C2f backbone module
+(a cross-stage partial bottleneck with two convolutions),
+a refined anchor-free head, and improved training recipes.
+YOLOv8-x achieves 53.9 mAP on COCO-val at 14.3 ms per image,
+establishing the immediate benchmark against which FusionDet
+is compared in Section~\ref{sec:results}.
+
+\subsection{Attention Mechanisms in Detection}
+
+Attention mechanisms, originally introduced for sequence
+modelling by the Transformer architecture~\cite{vaswani2017attention},
+have been widely adapted for visual detection.  Squeeze-and-Excitation
+(SE) networks~\cite{hu2018squeeze} model inter-channel
+dependencies by globally pooling spatial information and
+learning per-channel recalibration weights.  CBAM~\cite{woo2018cbam}
+combines channel and spatial attention, sequentially
+re-weighting feature maps along both dimensions.  Empirical
+results across multiple detection architectures confirm that
+incorporating attention into the feature neck---the module
+responsible for aggregating features across scales---yields
+consistent mAP improvements with minimal FPS penalty, a finding
+that directly motivates the attention-augmented neck of
+FusionDet.
+
+\subsection{Feature Pyramid Networks}
+
+Lin \textit{et al.}~\cite{lin2017feature} introduced the
+Feature Pyramid Network (FPN), which added a top-down pathway
+to the standard bottom-up CNN backbone.  Lateral connections
+merge semantically rich, spatially coarse deep features with
+spatially precise shallow features at each scale level, producing
+a set of feature maps that are simultaneously informative and
+well-localized.  FPN substantially improved small-object
+detection and has since been incorporated into virtually every
+competitive detection architecture.  PANet~\cite{liu2018path}
+augmented FPN with an additional bottom-up pathway, shortening
+the information path between low-level and high-level features.
+The BiFPN variant used in EfficientDet introduced learnable
+per-feature-level weighting, further improving multi-scale
+fusion quality.  FusionDet builds upon these advances with a
+bidirectional fusion neck incorporating attention recalibration,
+as described in the following section.

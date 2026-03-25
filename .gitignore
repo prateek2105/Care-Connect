@@ -62,3 +62,17 @@ Thumbs.db
 # Test files (keep organized test files, exclude temp test files)
 test-*.js
 *-test-temp.js
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.lof
+paper/*.lot
+paper/*.bbl
+paper/*.blg
+paper/*.synctex.gz
+paper/*.fdb_latexmk
+paper/*.fls
+paper/main.pdf

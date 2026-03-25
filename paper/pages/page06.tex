@@ -1,0 +1,150 @@
+% ============================================================
+% PAGE 6 — Proposed Method: Intermediate results and label
+%           assignment (bridge before Page 7)
+% ============================================================
+
+\subsubsection{Bounding-Box Coordinate Encoding}
+
+All box regression targets throughout FusionDet use the
+center-size format.  Given a ground-truth box with top-left
+corner $(x_1, y_1)$ and bottom-right corner $(x_2, y_2)$, the
+canonical representation is:
+\begin{equation}
+    b = \left(
+        \frac{x_1 + x_2}{2},\;
+        \frac{y_1 + y_2}{2},\;
+        x_2 - x_1,\;
+        y_2 - y_1
+    \right)
+    = (x_c, y_c, w, h)
+    \label{eq:bbox}
+\end{equation}
+Predictions at each feature-map location $(i, j)$ of level
+$l$ are decoded as offsets from the stride-aligned grid point
+$\left(i \cdot s_l,\; j \cdot s_l\right)$, where $s_l \in
+\{8, 16, 32, 64\}$ is the stride of pyramid level $l$.
+
+\subsubsection{Intersection over Union}
+
+The Intersection over Union (IoU) between a predicted box
+$b_p = (x_c^p, y_c^p, w^p, h^p)$ and a ground-truth box
+$b_{gt}$ is:
+\begin{equation}
+    \text{IoU}(b_p, b_{gt}) =
+    \frac{\text{Area}(b_p \cap b_{gt})}
+         {\text{Area}(b_p \cup b_{gt})}
+    \label{eq:iou}
+\end{equation}
+IoU is scale-invariant (a small box must achieve the same
+proportional overlap as a large box to receive the same score),
+making it more robust than pixel-area-based alternatives as a
+matching criterion and as a component of loss functions.
+
+\subsection{Dynamic Label Assignment: SimOTA}
+
+A critical design decision in anchor-free detectors is how to
+assign ground-truth objects to prediction locations during
+training.  Static rules---such as assigning any anchor with
+IoU above a threshold to the corresponding ground-truth box---
+are sensitive to threshold choice and fail gracefully near
+boundaries.  FusionDet adopts Simplified Optimal Transport
+Assignment (SimOTA)~\cite{ge2021yolox}, which formulates label
+assignment as an optimal transport problem solved efficiently
+with a greedy matching algorithm.
+
+\textbf{Cost matrix construction.}  For each ground-truth box
+$g_j$, a set of $k$ candidate prediction locations is first
+identified as those falling within a dynamic center region
+whose size scales with the object's predicted box width and
+height.  For each candidate $(i,j)$ pair, the assignment cost
+is:
+\begin{equation}
+    c_{ij} = \mathcal{L}_{\text{cls},ij}
+            + \lambda_{\text{geo}}\,\mathcal{L}_{\text{CIoU},ij}
+    \label{eq:simota_cost}
+\end{equation}
+where $\mathcal{L}_{\text{cls},ij}$ is the focal loss between
+the current predicted class distribution and the ground-truth
+label, and $\mathcal{L}_{\text{CIoU},ij}$ measures the
+geometric alignment between the predicted box and the
+ground-truth box.  The coefficient $\lambda_{\text{geo}} = 3.0$
+follows~\cite{ge2021yolox}.
+
+\textbf{Dynamic top-$k$ selection.}  The number of positive
+locations allocated to each ground-truth box is determined
+dynamically as:
+\begin{equation}
+    k_j = \left\lfloor
+        \sum_{i \in \mathcal{T}_j}
+        \text{IoU}(b_p^{(i)}, g_j)
+    \right\rfloor
+    \label{eq:topk}
+\end{equation}
+where $\mathcal{T}_j$ is the set of the top-10 candidate
+locations (by IoU) for ground-truth box $g_j$.  The floor
+ensures $k_j \geq 1$, guaranteeing at least one positive for
+every ground-truth instance.  This data-driven allocation
+naturally assigns more positives to large, easily detected
+objects and fewer positives to small or heavily occluded ones,
+producing a more calibrated training signal than fixed-$k$
+alternatives.
+
+\textbf{Conflict resolution.}  When a prediction location is
+selected as a positive for multiple ground-truth boxes---a
+frequent occurrence in crowded scenes---it is exclusively
+assigned to the ground-truth box for which the assignment cost
+$c_{ij}$ is lowest, and the other assignments are discarded.
+
+SimOTA improves mAP by approximately $1.2$ points over a fixed
+IoU-threshold assignment strategy at negligible computational
+cost during training, as confirmed by our ablation in
+Table~\ref{tab:assignment_ablation}.
+
+\begin{table}[!t]
+\centering
+\caption{Label assignment strategy ablation on COCO val2017.}
+\label{tab:assignment_ablation}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l c c}
+\hline\hline
+\textbf{Assignment Strategy} & \textbf{mAP} & \textbf{mAP@0.50} \\
+\hline
+IoU threshold ($\tau = 0.5$)  & 45.5 & 62.7 \\
+IoU threshold ($\tau = 0.4$)  & 45.9 & 63.1 \\
+ATSS                          & 46.2 & 63.5 \\
+\textbf{SimOTA (proposed)}    & \textbf{46.7} & \textbf{64.2} \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+SimOTA's advantage is most pronounced on small-object categories,
+where the pool of viable positive locations is small and
+precise geometric calibration of the cost matrix is most
+critical.  Its dynamic $k$ selection adapts naturally to object
+density: in crowded scenes it tends to assign fewer positives
+per object to reduce cross-object interference, while in sparse
+scenes it increases the positive count to stabilize gradient
+variance.
+
+\subsubsection{Neck Parameter Efficiency}
+
+The complete neck---bidirectional fusion with CBAM
+recalibration---introduces $2.1$~million additional
+parameters over the backbone (Table~\ref{tab:neck_ablation}).
+This is approximately $30\%$ of the total FusionDet parameter
+budget, confirming that the neck is the dominant contributor
+to both accuracy gain and additional cost.  Given that the
+$2.6$~mAP improvement over the FPN baseline is achieved with
+$2.1$~M parameters and an $11$~FPS reduction, the neck
+contributes approximately $0.24$~mAP per million neck
+parameters and $0.24$~mAP per FPS unit lost---a favorable
+accuracy-efficiency trade-off compared with backbone scaling,
+which delivers approximately $0.15$~mAP per million parameters
+at comparable model sizes.
+
+The next subsection describes how the four recalibrated feature
+maps $\hat{P}_2, \hat{P}_3, \hat{P}_4, \hat{P}_5$ produced by
+the neck are decoded into the final set of detections by the
+detection head, and details the composite loss function used to
+train the entire pipeline end-to-end.

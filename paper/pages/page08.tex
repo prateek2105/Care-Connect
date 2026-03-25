@@ -1,0 +1,161 @@
+% ============================================================
+% PAGE 8 — Experimental Setup, Datasets, and Training Details
+% ============================================================
+
+\section{Experimental Results and Discussion}
+\label{sec:results}
+
+This section details the experimental protocol used to evaluate
+FusionDet, beginning with the benchmark datasets, proceeding
+through the hardware and software configuration, and concluding
+with the formal definition of every evaluation metric reported
+in subsequent analyses.  Reproducibility is a first-order
+concern: every hyperparameter, library version, and random seed
+is recorded so that independent groups can replicate our
+results without ambiguity.
+
+\subsection{Datasets}
+
+\subsubsection{MS-COCO 2017}
+
+The Microsoft Common Objects in Context (MS-COCO)
+\cite{lin2014microsoft} dataset is the primary benchmark for
+all experiments.  COCO 2017 comprises 118\,287 training images
+(\texttt{train2017}), 5\,000 validation images
+(\texttt{val2017}), and 20\,288 test images
+(\texttt{test-dev2017}) spanning 80 object categories.  Its
+defining characteristic is the diversity of object scales: the
+evaluation protocol partitions detections into \textit{small}
+($\text{area} < 32^{2}$~px), \textit{medium}
+($32^{2} \leq \text{area} < 96^{2}$~px), and \textit{large}
+($\text{area} \geq 96^{2}$~px) subsets, providing granular
+visibility into a detector's scale-dependent performance.
+All primary results are reported on \texttt{val2017}; final
+comparative numbers are additionally submitted to the
+\texttt{test-dev} evaluation server for independent
+verification.
+
+\subsubsection{PASCAL VOC 2012}
+
+As a secondary benchmark we employ PASCAL VOC
+2012~\cite{everingham2010pascal}, which contains 11\,540
+\texttt{trainval} images across 20 categories.  Although
+smaller and less challenging than COCO, VOC remains widely used
+in the literature and provides a useful cross-dataset
+generalization check.  We train on the combined VOC 2007+2012
+\texttt{trainval} split (16\,551 images) and evaluate on the
+VOC 2007 \texttt{test} split (4\,952 images).
+
+\subsubsection{Data Augmentation Pipeline}
+
+Both datasets are processed through an identical augmentation
+pipeline: mosaic augmentation~\cite{bochkovskiy2020yolov4}
+(four images composited into one), random horizontal flip
+($p = 0.5$), colour jitter (brightness $\pm 0.4$, contrast
+$\pm 0.4$, saturation $\pm 0.7$, hue $\pm 0.015$), random
+affine transformations (rotation $\pm 10^{\circ}$, scale
+$0.1$--$2.0$, translation $\pm 0.1$), and MixUp
+\cite{zhang2018mixup} with $\alpha = 1.5$ applied
+stochastically during the first 280 epochs.  Mosaic and MixUp
+are disabled for the final 20 epochs to allow batch-normalization
+statistics to stabilize on unperturbed data~\cite{ge2021yolox}.
+
+\subsection{Hardware and Software Configuration}
+
+Table~\ref{tab:hw_sw} summarizes the complete training
+environment.
+
+\begin{table}[!t]
+\centering
+\caption{Hardware and software configuration.}
+\label{tab:hw_sw}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l l}
+\hline\hline
+\textbf{Component}      & \textbf{Specification} \\
+\hline
+GPU                      & 4$\times$ NVIDIA RTX 4090 (24\,GB) \\
+CPU                      & AMD EPYC 7543 (32 cores) \\
+RAM                      & 256\,GB DDR4-3200 \\
+Framework                & PyTorch 2.1.0, CUDA 12.1 \\
+Mixed Precision          & FP16 via \texttt{torch.cuda.amp} \\
+Distributed Strategy     & PyTorch DDP (1 node, 4 GPUs) \\
+\hline
+Optimizer                & AdamW~\cite{loshchilov2019decoupled} \\
+Base Learning Rate       & $1 \times 10^{-3}$ \\
+Weight Decay             & $5 \times 10^{-2}$ \\
+LR Schedule              & Cosine annealing to $1 \times 10^{-5}$ \\
+Warm-up                  & Linear, 3 epochs \\
+Batch Size               & 64 (16 per GPU) \\
+Input Resolution         & $640 \times 640$ \\
+Total Epochs             & 300 \\
+EMA Decay                & 0.9999 \\
+Random Seed              & 42 \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+The AdamW optimizer~\cite{loshchilov2019decoupled} is chosen
+over vanilla SGD for its decoupled weight-decay formulation,
+which improves generalization in transformer-containing
+architectures by preventing interaction between adaptive
+learning-rate scaling and the regularization term.  The cosine
+annealing schedule smoothly reduces the learning rate from
+$1 \times 10^{-3}$ to $1 \times 10^{-5}$, avoiding the abrupt
+drops associated with step-decay schedules.  An exponential
+moving average (EMA) of model weights with decay $0.9999$ is
+maintained throughout training and used for all evaluation.
+
+Inference latency is measured on a single RTX~4090 GPU at
+batch size 1, FP16 precision, and \texttt{torch.no\_grad()},
+averaged over the full \texttt{val2017} split after a 50-image
+warm-up.
+
+\subsection{Evaluation Metrics}
+
+\subsubsection{Mean Average Precision (mAP)}
+
+For each class $k$, a precision--recall curve is constructed
+by sweeping a confidence threshold.  The Average Precision
+(AP) is the area under the interpolated curve:
+\begin{equation}
+    \text{AP}_{k}^{\tau} =
+    \int_{0}^{1} p_{k}^{\tau}(r)\; dr
+    \label{eq:ap}
+\end{equation}
+The mean across all $K$ classes:
+\begin{equation}
+    \text{mAP}^{\tau} =
+    \frac{1}{K}\sum_{k=1}^{K} \text{AP}_{k}^{\tau}
+    \label{eq:map_tau}
+\end{equation}
+COCO further averages over ten IoU thresholds from $0.50$ to
+$0.95$ in steps of $0.05$:
+\begin{equation}
+    \text{mAP}@[.50{:}.05{:}.95] =
+    \frac{1}{10}\sum_{t=1}^{10}
+    \text{mAP}^{0.45 + 0.05\,t}
+    \label{eq:map_coco}
+\end{equation}
+We report this metric together with $\text{mAP}@0.50$,
+$\text{AP}_{S}$, $\text{AP}_{M}$, and $\text{AP}_{L}$.
+
+\subsubsection{Inference Speed (FPS)}
+
+Frames Per Second is computed as:
+\begin{equation}
+    \text{FPS} = \frac{N_{\text{images}}}
+    {\sum_{i=1}^{N_{\text{images}}} t_{i}}
+    \label{eq:fps}
+\end{equation}
+where $t_{i}$ is the wall-clock time for image $i$, inclusive
+of pre-processing (resize, normalize) and post-processing (NMS).
+
+\subsubsection{Computational Complexity}
+
+We additionally report the number of floating-point operations
+(GFLOPs) and trainable parameters~(M) for every model variant,
+measured at reference resolution $640 \times 640$ using the
+\texttt{fvcore} \texttt{FlopCountAnalysis} utility to ensure
+consistency with values reported in the literature.

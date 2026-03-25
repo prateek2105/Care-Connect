@@ -1,0 +1,177 @@
+% ============================================================
+% PAGE 1 — Title, Abstract, and Introduction (Section I)
+% ============================================================
+
+% ---------------------------------------------------------------
+% Abstract
+% ---------------------------------------------------------------
+\begin{abstract}
+Object detection---the joint task of classifying and localizing
+every object of interest within an image---stands as one of the
+most intensively studied problems in computer vision.  Over
+more than two decades, the field has undergone a fundamental
+transformation: from hand-crafted feature pipelines operating
+at several seconds per frame to end-to-end deep neural networks
+capable of processing high-definition video in real time.  This
+paper surveys that evolution, tracing the progression from
+classical techniques such as the Viola--Jones detector and
+Histogram of Oriented Gradients (HOG) through the two-stage
+region-based convolutional neural network (R-CNN) family to
+modern single-stage architectures typified by the YOLO and SSD
+lineages.  Central to our analysis is the persistent
+\textit{speed--precision trade-off}: architectures optimized
+for high mean Average Precision (mAP) have historically
+sacrificed frames per second (FPS), while those designed for
+real-time throughput have yielded accuracy.  We investigate the
+structural and algorithmic causes of this tension, review
+mechanisms that partially reconcile it---including feature
+pyramid networks, attention modules, and decoupled detection
+heads---and present FusionDet, a novel single-stage detector
+that achieves state-of-the-art accuracy on the MS-COCO
+benchmark while maintaining real-time inference on commodity
+hardware.  Ablation studies isolate the contribution of each
+proposed component, and a comprehensive comparison against
+leading contemporaries confirms that FusionDet advances the
+Pareto frontier of the speed--precision trade-off.
+\end{abstract}
+
+\begin{IEEEkeywords}
+object detection, deep learning, convolutional neural networks,
+speed--precision trade-off, mean average precision, real-time
+inference, feature pyramid network, attention mechanism
+\end{IEEEkeywords}
+
+% ---------------------------------------------------------------
+% Section I — Introduction
+% ---------------------------------------------------------------
+\section{Introduction}
+\label{sec:introduction}
+
+\IEEEPARstart{O}{bject} detection is the computer-vision task
+of simultaneously answering two questions about every location
+in an image: \textit{what} is there, and \textit{where} is it?
+Formally, given an image $\mathbf{I} \in \mathbb{R}^{H \times W
+\times 3}$, a detector must produce a set of predictions
+$\mathcal{D} = \{(b_i, c_i, s_i)\}_{i=1}^{N}$, where $b_i =
+(x_i, y_i, w_i, h_i)$ is an axis-aligned bounding box
+parameterized by center coordinates and dimensions, $c_i \in
+\{1,\ldots,K\}$ is the predicted class label from a vocabulary
+of $K$ categories, and $s_i \in (0,1)$ is a confidence score
+reflecting detection reliability.  This formulation encompasses
+both \textit{classification}---assigning a semantic label to
+image content---and \textit{localization}---determining the
+spatial extent of that content.  The combination makes
+detection fundamentally harder than either sub-task alone: a
+classifier may commit its full representational capacity to
+category discrimination, whereas a detector must simultaneously
+maintain spatial precision across a wide range of object
+scales, aspect ratios, and occlusion levels.
+
+\subsection{Historical Context}
+
+Early automated detection systems predated deep learning by
+more than a decade.  The Viola--Jones
+framework~\cite{viola2001rapid} demonstrated that a cascade of
+weak Haar-feature classifiers, trained with AdaBoost and
+evaluated within a sliding-window paradigm, could detect
+frontal faces in real time on year-2001 hardware.  Deformable
+Part Models (DPM)~\cite{felzenszwalb2010object} later extended
+this idea to articulated objects by representing each class as
+a collection of part filters whose spatial arrangement was
+modeled with a latent SVM.  Although these methods were
+competitive on benchmarks of the era, they shared a fundamental
+limitation: all discriminative features were hand-crafted by
+domain experts, making them brittle under viewpoint change,
+illumination variation, and intra-class deformation.
+
+The publication of AlexNet~\cite{krizhevsky2012imagenet} in
+2012 marked an inflection point.  Learned representations from
+deep convolutional neural networks (CNNs) dramatically
+outperformed hand-crafted descriptors on image classification,
+and the community quickly recognized that the same
+representations could anchor a new generation of detectors.
+R-CNN~\cite{girshick2014rich} pioneered this approach by
+extracting CNN features from selective-search region proposals;
+Fast R-CNN~\cite{girshick2015fast} consolidated the pipeline
+into a single network; and Faster R-CNN~\cite{ren2015faster}
+replaced the external proposal algorithm with a learnable
+Region Proposal Network (RPN), achieving near-real-time
+performance.  Single-stage architectures---YOLO~\cite{redmon2016you}
+and SSD~\cite{liu2016ssd}---removed the proposal stage
+entirely, reformulating detection as a single regression
+problem over a dense anchor grid and pushing throughput into
+the tens of milliseconds per frame.
+
+\subsection{The Speed--Precision Trade-Off}
+
+Despite steady progress, the field has long grappled with a
+fundamental tension: maximizing detection accuracy and
+maximizing inference speed pull detector design in opposing
+directions.
+
+\textbf{Mean Average Precision (mAP)} is the canonical accuracy
+metric.  For each of the $K$ object categories, a
+precision--recall curve is constructed by sweeping a confidence
+threshold, and the average precision $\text{AP}_k$ is computed
+as the area under that curve.  The mean across categories,
+$\text{mAP} = \frac{1}{K}\sum_{k=1}^{K}\text{AP}_k$,
+summarizes overall detection quality.  In the COCO evaluation
+protocol, mAP is further averaged over ten intersection-over-union
+(IoU) thresholds from $0.50$ to $0.95$, penalizing imprecise
+localization more aggressively than single-threshold variants.
+Achieving high mAP demands rich multi-scale feature
+representations, careful handling of small objects, and
+accurate bounding-box regression---all of which increase
+computational cost.
+
+\textbf{Frames Per Second (FPS)} measures throughput: the
+number of images processed per second at inference time.
+Real-world deployment scenarios---autonomous driving,
+video surveillance, robotics---impose hard latency constraints
+that often require 30--60 FPS or beyond.  Meeting such
+requirements forces architectural choices that reduce
+representational capacity: fewer or shallower feature
+extraction stages, lighter backbone networks, and the
+elimination of computationally expensive post-processing steps.
+
+Jointly optimizing mAP and FPS is historically difficult for
+three reasons.  First, the feature maps required for accurate
+small-object detection must be computed at high spatial
+resolution, which scales computational cost quadratically with
+image dimensions.  Second, two-stage architectures achieve
+their accuracy advantage largely by devoting a separate network
+pass to region refinement---a process that is inherently
+sequential and therefore latency-bound.  Third, the anchor
+densities required to cover the full space of object sizes
+generate a severe positive--negative imbalance during training,
+which, if unaddressed, causes convergence to trivial solutions
+that suppress false positives at the cost of true-positive
+recall.
+
+\subsection{Contributions}
+
+This paper makes the following contributions:
+\begin{enumerate}
+    \item A structured survey of object detection methods from
+    classical feature-engineering approaches to contemporary
+    deep-learning architectures, with emphasis on the
+    mechanisms by which each generation addresses the
+    speed--precision trade-off.
+    \item FusionDet, a novel single-stage detector comprising
+    a lightweight reconfigured backbone, a bidirectional
+    feature pyramid neck augmented with channel-and-spatial
+    attention, and a decoupled detection head trained with
+    Complete IoU (CIoU) loss and focal loss.
+    \item Comprehensive empirical evaluation on MS-COCO 2017
+    and PASCAL VOC 2012, including ablation studies that
+    quantify the marginal contribution of each architectural
+    innovation and a comparison against state-of-the-art
+    single- and two-stage detectors.
+\end{enumerate}
+
+The remainder of this paper is organized as follows.
+Section~\ref{sec:related} reviews prior work.
+Section~\ref{sec:method} details the FusionDet architecture.
+Section~\ref{sec:results} presents experimental results and
+analysis.  Section~\ref{sec:conclusion} concludes with
+directions for future work.
