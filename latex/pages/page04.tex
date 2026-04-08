@@ -1,0 +1,160 @@
+% ============================================================
+% PAGE 4 — Problem Formulation & Proposed Architecture
+% ============================================================
+
+\section{Problem Formulation}
+\label{sec:problem}
+
+Let $\mathbf{I} \in \mathbb{R}^{3 \times H \times W}$ denote an
+RGB input image of height $H$ and width $W$. The goal of object
+detection is to infer a set of $K$ tuples
+\begin{equation}
+  \mathcal{O} = \bigl\{(b_k,\, c_k,\, s_k)\bigr\}_{k=1}^{K}
+  \label{eq:detection_output}
+\end{equation}
+where $b_k = (x_k, y_k, w_k, h_k)$ specifies the axis-aligned
+bounding box (center coordinates plus dimensions) of the $k$-th
+detected instance, $c_k \in \{1, \ldots, C_{\text{cls}}\}$ is its
+predicted class label from a vocabulary of $C_{\text{cls}}$ object
+categories, and $s_k \in [0,1]$ is a confidence score indicating
+the estimated probability that a genuine instance occupies the
+predicted box.
+
+A detection model $f_\theta$ with parameters $\theta$ implements this
+mapping $f_\theta : \mathbf{I} \mapsto \mathcal{O}$ and is trained by
+minimizing an expected composite loss
+\begin{equation}
+  \mathcal{L}(\theta) =
+  \mathbb{E}_{(\mathbf{I},\mathcal{G})\sim\mathcal{D}}
+  \bigl[\,
+    \lambda_{\text{cls}}\,L_{\text{cls}}
+    + \lambda_{\text{box}}\,L_{\text{box}}
+    + \lambda_{\text{obj}}\,L_{\text{obj}}
+  \,\bigr]
+  \label{eq:total_loss}
+\end{equation}
+over the training distribution $\mathcal{D}$ of image--annotation
+pairs $(\mathbf{I}, \mathcal{G})$, where $\mathcal{G}$ is the set of
+ground-truth boxes and labels. The scalar weights $\lambda_{\text{cls}}$,
+$\lambda_{\text{box}}$, and $\lambda_{\text{obj}}$ balance the three
+loss terms; their values are determined by a grid search on the
+validation split (Section~\ref{sec:results}).
+
+\section{Proposed Architecture: FusionDet}
+\label{sec:arch}
+
+Figure~\ref{fig:arch_overview} provides a schematic of the complete
+FusionDet pipeline, which consists of four sequential processing
+stages: (A) the dual backbone, (B) the Adaptive Feature Fusion
+module, (C) the bidirectional neck, and (D) the decoupled detection
+head.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+    box/.style   = {draw, rounded corners=2pt, minimum width=2.0cm,
+                    minimum height=0.55cm, align=center, font=\small},
+    arrow/.style = {-{Stealth[length=4pt]}, thick},
+    scale=0.82, transform shape
+  ]
+  % Input
+  \node[box, fill=gray!15] (inp) {Input Image};
+
+  % CNN branch
+  \node[box, fill=blue!15, below left=0.55cm and 0.5cm of inp]
+    (cnn) {CSP-Darknet\\(CNN Branch)};
+  % Transformer branch
+  \node[box, fill=orange!15, below right=0.55cm and 0.5cm of inp]
+    (vit) {Linear-Attn\\Transformer};
+
+  % AFF
+  \node[box, fill=green!20, below=1.1cm of inp]
+    (aff) {Adaptive Feature\\Fusion (AFF)};
+
+  % Neck
+  \node[box, fill=purple!15, below=0.65cm of aff]
+    (neck) {BiPANet Neck\\+ LCA};
+
+  % Head
+  \node[box, fill=red!15, below=0.65cm of neck]
+    (head) {Decoupled\\Detection Head};
+
+  % Output
+  \node[box, fill=gray!15, below=0.55cm of head]
+    (out) {Predictions $\mathcal{O}$};
+
+  % Arrows
+  \draw[arrow] (inp)  -- (cnn);
+  \draw[arrow] (inp)  -- (vit);
+  \draw[arrow] (cnn)  -- (aff);
+  \draw[arrow] (vit)  -- (aff);
+  \draw[arrow] (aff)  -- (neck);
+  \draw[arrow] (neck) -- (head);
+  \draw[arrow] (head) -- (out);
+\end{tikzpicture}
+\caption{High-level overview of the FusionDet architecture. Dual
+backbones process the input in parallel; the AFF module merges their
+outputs; the BiPANet neck builds a multi-scale pyramid; and the
+decoupled head produces final predictions.}
+\label{fig:arch_overview}
+\end{figure}
+
+\subsection{Dual-Backbone Design Rationale}
+\label{sec:dual_backbone}
+
+The two branches of FusionDet are designed to be architecturally
+orthogonal:\ the CNN branch operates on local $3\times3$ kernels
+with shift-equivariant inductive bias, while the transformer branch
+uses linearized attention to aggregate global context from all
+spatial positions simultaneously. Running these branches in parallel,
+rather than composing one as a sub-module of the other, preserves the
+maximum representational diversity.
+
+Both branches accept the same $3\times H\times W$ input tensor and
+independently produce four-level feature hierarchies at strides
+$\{4, 8, 16, 32\}$. Let $\mathbf{F}^{\text{cnn}}_l$ and
+$\mathbf{F}^{\text{vit}}_l$ denote the $l$-th level feature maps
+from the CNN and transformer branches respectively, with
+$l \in \{2,3,4,5\}$ following the standard FPN notation. The AFF
+module is responsible for combining these pairs into a unified
+representation $\mathbf{P}_l$ consumed by the neck.
+
+\subsection{Adaptive Feature Fusion (AFF)}
+\label{sec:aff}
+
+Naive fusion strategies---element-wise addition, concatenation
+followed by a $1\times1$ projection, or fixed weighted averages---
+treat all channels and spatial locations identically. In practice,
+some channels of the CNN output are more informative at small scales
+(where convolutional edge detectors excel) while the transformer
+output may dominate at large scales (where global context
+disambiguates object identity). The AFF module learns this
+trade-off through a pair of spatial--channel gating networks.
+
+For each level $l$, the AFF module computes a gate tensor
+$\mathbf{G}_l \in [0,1]^{C \times H_l \times W_l}$ from the
+concatenated features:
+\begin{equation}
+  \mathbf{G}_l = \sigma\!\bigl(
+    \mathcal{F}_{\text{gate}}\bigl(
+      \text{Concat}(\mathbf{F}^{\text{cnn}}_l,\,
+                     \mathbf{F}^{\text{vit}}_l)
+    \bigr)
+  \bigr)
+  \label{eq:aff}
+\end{equation}
+where $\mathcal{F}_{\text{gate}}$ is a two-layer
+$1\times1$--$3\times3$--$1\times1$ bottleneck with sigmoid output.
+The fused feature map is then:
+\begin{equation}
+  \mathbf{P}_l =
+    \mathbf{G}_l \odot \mathbf{F}^{\text{cnn}}_l
+    \;+\;
+    (1 - \mathbf{G}_l) \odot \mathbf{F}^{\text{vit}}_l
+  \label{eq:aff_merge}
+\end{equation}
+This convex combination guarantees that the fused output lies in the
+same feature space as each branch without the channel-dimension
+doubling of concatenation.  Setting $\mathbf{G}_l \equiv 0.5$
+recovers a simple average, confirming that the gated design strictly
+generalizes simpler baselines.

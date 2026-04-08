@@ -1,0 +1,173 @@
+% ============================================================
+% PAGE 6 — Module 2: Feature Fusion and Attention Mechanisms (Neck)
+% ============================================================
+
+\subsection{Module 2: Feature Fusion and Attention Mechanisms
+(Neck)}
+
+A backbone, however powerful, produces feature maps whose
+representational strengths are inherently scale-dependent:
+shallow stages preserve fine spatial detail but lack semantic
+abstraction, while deep stages capture rich category-level
+semantics at the expense of spatial resolution. The
+\textit{neck} of a detection architecture exists precisely to
+reconcile this dichotomy, constructing a unified multi-scale
+feature pyramid in which every level carries both high
+resolution \textit{and} strong semantics. In FusionDet the neck
+comprises two tightly integrated components: a \textit{Bidirectional
+Path Aggregation Network} (BiPANet) for structural feature
+fusion and a \textit{Lightweight Channel Attention} (LCA)
+module that recalibrates channel responses at every pyramid
+level.
+
+\subsubsection{Bidirectional Path Aggregation}
+
+Classical Feature Pyramid Networks \cite{lin2017feature}
+propagate information in a single top-down direction: the
+deepest, most semantic feature map is progressively upsampled
+and merged with shallower maps through lateral connections.
+While effective, this unidirectional flow means that the
+shallowest pyramid level receives strong semantic enrichment
+but the deepest level gains little additional spatial detail.
+The Path Aggregation Network (PANet) \cite{liu2018path}
+addressed this asymmetry by appending a bottom-up pathway after
+the top-down pass, allowing fine-grained spatial cues to flow
+back toward the deeper levels.
+
+FusionDet adopts and extends this bidirectional strategy. Let
+$\{\mathbf{P}_{2},\mathbf{P}_{3},\mathbf{P}_{4},
+\mathbf{P}_{5}\}$ denote the fused backbone outputs at strides
+$\{4,8,16,32\}$ produced by the AFF module
+(Section~\ref{sec:aff}). The top-down pass generates intermediate
+representations $\{\mathbf{T}_{l}\}$ by recursive upsampling
+and element-wise addition:
+\begin{equation}
+    \mathbf{T}_{l} =
+    \phi^{1\times1}_{l}\!\bigl(\mathbf{P}_{l}\bigr)
+    \;+\;
+    \text{Up}_{2\times}\!\bigl(\mathbf{T}_{l+1}\bigr),
+    \quad l = 4,3,2
+    \label{eq:topdown}
+\end{equation}
+where $\phi^{1\times1}_{l}$ is a $1\times1$ convolution that
+aligns channel dimensionality and $\text{Up}_{2\times}$ denotes
+nearest-neighbour upsampling by a factor of two. The seed is
+$\mathbf{T}_{5} = \phi^{1\times1}_{5}(\mathbf{P}_{5})$.
+
+The subsequent bottom-up pass produces the final pyramid
+features $\{\mathbf{N}_{l}\}$:
+\begin{equation}
+    \mathbf{N}_{l} =
+    \text{DWSep}^{3\times3}_{l}\!\Bigl(
+        \mathbf{T}_{l}
+        \;+\;
+        \text{Down}_{2\times}\!\bigl(\mathbf{N}_{l-1}\bigr)
+    \Bigr),
+    \quad l = 3,4,5
+    \label{eq:bottomup}
+\end{equation}
+with $\mathbf{N}_{2} =
+\text{DWSep}^{3\times3}_{2}(\mathbf{T}_{2})$ as the seed and
+$\text{Down}_{2\times}$ implemented as a stride-2 depthwise
+convolution rather than a pooling operation, preserving
+learnable downsampling dynamics. Every $3\times3$ convolution in
+both passes is realized as a depthwise-separable operation
+\cite{howard2017mobilenets}, keeping the neck's total cost
+below $0.8$~GFLOPs---approximately one-eighth of a vanilla
+PANet with standard convolutions at the same channel width.
+
+The bidirectional design ensures that $\mathbf{N}_{2}$ retains
+the semantic boost injected during the top-down pass, while
+$\mathbf{N}_{5}$ recovers spatial precision propagated upward
+during the bottom-up pass. This symmetry is particularly
+beneficial for small-object detection, where the shallowest
+pyramid level must carry sufficient category-level information
+to disambiguate visually similar but semantically distinct
+targets \cite{liu2018path}.
+
+\subsubsection{Lightweight Channel Attention (LCA)}
+
+Even after bidirectional aggregation, not all channels within a
+given pyramid level contribute equally to detection performance.
+Some channels may encode background texture that is irrelevant
+to the objects of interest, while others may carry precisely
+the edge or color gradient information needed to resolve a
+difficult instance. To allow the network to amplify informative
+channels and suppress redundant ones, we apply a Lightweight
+Channel Attention module after each pyramid output
+$\mathbf{N}_{l}$.
+
+Given $\mathbf{N}_{l} \in \mathbb{R}^{C \times H_l \times
+W_l}$, LCA first aggregates spatial information into a channel
+descriptor via global average pooling:
+\begin{equation}
+    z_{c}^{l} = \frac{1}{H_l \, W_l}
+    \sum_{i=1}^{H_l}\sum_{j=1}^{W_l}
+    \mathbf{N}_{l}(c,\,i,\,j)
+    \label{eq:lca_gap}
+\end{equation}
+The descriptor vector
+$\mathbf{z}^{l} \in \mathbb{R}^{C}$ is then passed through a
+two-layer bottleneck with a reduction ratio $r$:
+\begin{equation}
+    \mathbf{a}^{l} = \sigma\!\Bigl(
+        \mathbf{W}_{2}^{l}\;\text{SiLU}\!\bigl(
+            \mathbf{W}_{1}^{l}\,\mathbf{z}^{l}
+        \bigr)
+    \Bigr)
+    \label{eq:lca_gate}
+\end{equation}
+where $\mathbf{W}_{1}^{l} \in \mathbb{R}^{(C/r) \times C}$
+and $\mathbf{W}_{2}^{l} \in \mathbb{R}^{C \times (C/r)}$ are
+learned weight matrices and $\sigma$ is the sigmoid function.
+The attention vector $\mathbf{a}^{l} \in [0,1]^{C}$ is
+broadcast across the spatial dimensions and applied via
+channel-wise multiplication:
+\begin{equation}
+    \hat{\mathbf{N}}_{l} = \mathbf{a}^{l} \odot \mathbf{N}_{l}
+    \label{eq:lca_apply}
+\end{equation}
+
+We set $r = 16$ throughout, which means the bottleneck
+introduces only $2C^{2}/16 = C^{2}/8$ additional parameters per
+level---fewer than $0.02$~M parameters across all four pyramid
+levels combined for $C = 256$. Despite this modest footprint,
+channel attention provides a consistent mAP lift of
+$0.5$--$0.8$~points in our ablation studies, with the largest
+gains observed on the medium-object subset ($32^{2}$ to
+$96^{2}$ pixels) of MS-COCO, where channel selectivity helps
+the network resolve partially occluded instances whose
+discriminative cues are concentrated in a narrow subset of
+feature channels.
+
+\subsubsection{Transformer-Style Cross-Scale Attention}
+
+Beyond per-level channel recalibration, FusionDet optionally
+supports a cross-scale attention pass that allows tokens at
+one pyramid level to attend to tokens at adjacent levels.
+Concretely, for each spatial position $i$ in
+$\hat{\mathbf{N}}_{l}$, we form a query vector
+$\mathbf{q}_{i}^{l}$ and gather key--value pairs from the
+spatially corresponding $2\times2$ neighbourhood in both
+$\hat{\mathbf{N}}_{l-1}$ and $\hat{\mathbf{N}}_{l+1}$:
+\begin{equation}
+    \text{Attn}_{i}^{l} = \text{softmax}\!\!\left(
+        \frac{\mathbf{q}_{i}^{l}\,
+              \mathbf{K}_{\mathcal{N}(i)}^{\top}}
+             {\sqrt{d_{k}}}
+    \right) \mathbf{V}_{\mathcal{N}(i)}
+    \label{eq:cross_attn}
+\end{equation}
+where $\mathcal{N}(i)$ denotes the local neighbourhood set and
+$d_{k}$ is the key dimension. Because the neighbourhood is
+fixed at $2\times2$ per adjacent level, each query attends to
+at most eight key--value pairs, preserving the linear
+complexity guarantee established in the backbone's transformer
+branch \cite{katharopoulos2020transformers}. This cross-scale
+window constrains the attention span sufficiently to avoid
+the quadratic blowup of full multi-scale attention, while
+still enabling the detector to propagate contextual cues---such
+as the co-occurrence of a traffic light and a
+crosswalk---across resolution levels that would otherwise
+interact only through the additive connections of the PANet
+pathways.

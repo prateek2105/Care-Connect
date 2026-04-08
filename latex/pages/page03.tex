@@ -1,0 +1,107 @@
+% ============================================================
+% PAGE 3 — Literature Review
+% ============================================================
+
+\section{Related Work}
+\label{sec:related}
+
+Object detection has a rich literature spanning several distinct
+architectural paradigms. This section organizes prior work into
+four thematic clusters most relevant to FusionDet.
+
+\subsection{Region-Based Two-Stage Detectors}
+
+The dominant paradigm through approximately 2018 was the
+two-stage detector. The R-CNN family pioneered the use of selective
+search to generate candidate bounding boxes, which were then
+classified by a CNN. Faster R-CNN \cite{ren2015faster} replaced
+selective search with a learned Region Proposal Network (RPN),
+enabling end-to-end training and achieving significant speed
+improvements over its predecessors. Mask R-CNN extended this framework to
+instance segmentation by adding a parallel mask-prediction branch.
+Despite high accuracy, two-stage detectors carry inherent latency
+from the sequential proposal-then-classify pipeline, limiting their
+applicability in real-time scenarios.
+
+\subsection{One-Stage and Anchor-Free Detectors}
+
+YOLO \cite{redmon2016yolo} fundamentally reframed detection as a
+single regression problem: a single forward pass through a
+fully-convolutional network directly predicts bounding boxes and
+class probabilities on a spatial grid, achieving real-time inference.
+Subsequent iterations---YOLOv3, YOLOv4 \cite{bochkovskiy2020yolov4},
+and YOLOX \cite{ge2021yolox}---systematically improved the original
+design through multi-scale prediction heads, better backbone choices,
+and mosaic data augmentation. RetinaNet introduced Focal Loss
+\cite{lin2017focal} to address the extreme foreground--background
+class imbalance inherent in dense prediction, enabling a one-stage
+model to match two-stage accuracy. Anchor-free approaches such as
+FCOS and CenterPoint avoid the grid-search over anchor configurations
+entirely, instead predicting object centers and regressing box
+dimensions from those centers, simplifying training and reducing the
+sensitivity to anchor design choices.
+
+\subsection{Feature Pyramid and Multi-Scale Fusion}
+
+Real-world scenes contain objects at vastly different scales, making
+single-resolution prediction heads inadequate. Feature Pyramid
+Networks \cite{lin2017feature} introduced a top-down pathway that
+fuses high-resolution shallow features with semantically rich deep
+features, becoming a near-universal component of modern detectors.
+Path Aggregation Network \cite{liu2018path} augmented the FPN with a
+bottom-up pathway, creating a bidirectional information flow that
+benefits the deepest feature levels with recovered spatial detail.
+BiFPN added learnable per-feature weights to the aggregation
+junctions, enabling the network to selectively amplify the most
+informative input at each merge point. NAS-FPN used neural
+architecture search to discover an optimal pyramid topology,
+demonstrating that hand-designed topologies may not be globally
+optimal. FusionDet builds on the PANet topology but replaces
+fixed-coefficient fusion with our trainable AFF module and
+integrates channel attention at every pyramid level.
+
+\subsection{Vision Transformers in Detection}
+
+The self-attention mechanism \cite{vaswani2017attention} enables
+transformers to model pairwise relationships between all tokens
+simultaneously, providing a fundamentally global inductive bias
+absent in convolutions. ViT \cite{dosovitskiy2021vit} demonstrated
+that patch-based transformers trained on large datasets can
+outperform CNNs on ImageNet classification. Swin Transformer
+\cite{liu2021swin} introduced hierarchical feature maps and
+shifted-window attention, recovering the multi-scale structure
+essential for dense prediction tasks while bounding attention
+complexity to be linear in the number of tokens. DETR
+\cite{carion2020detr} replaced the detection head with a transformer
+decoder that directly predicts a fixed set of object embeddings,
+eliminating hand-designed anchor matching and NMS. Deformable DETR
+accelerated convergence by restricting each query to attend to a
+small set of key spatial locations, reducing the quadratic attention
+cost to linear in practice.
+
+A persistent challenge with transformer-based detectors is their
+quadratic memory and compute scaling with spatial resolution, which
+becomes prohibitive for high-resolution inputs. Linear-attention
+reformulations \cite{katharopoulos2020transformers} address this by
+factorizing the attention kernel, but typically sacrifice some
+modeling power. FusionDet uses linear attention exclusively within
+the transformer branch, preserving global context modeling at
+manageable cost, and delegates fine-grained local feature extraction
+to the parallel CNN branch where convolutions are provably more
+efficient.
+
+\subsection{Hybrid CNN--Transformer Architectures}
+
+Several recent works have sought to combine CNN local feature
+extraction with transformer global context. CoAtNet interleaves
+depthwise convolution and self-attention stages, showing that
+depthwise convolution subsumes relative-position attention in early
+layers. CMT and MobileViT insert transformer blocks inside a
+lightweight CNN backbone, achieving strong mobile-class performance.
+DETReg and UP-DETR use unsupervised pretraining of the transformer
+decoder to accelerate convergence on detection tasks. Unlike these
+approaches---which treat the transformer as either an augmentation of
+or a replacement for specific CNN stages---FusionDet maintains fully
+independent parallel branches and unifies them through a dedicated
+fusion module, preserving the full representational diversity of both
+paradigms without architectural entanglement.

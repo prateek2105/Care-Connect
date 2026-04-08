@@ -1,0 +1,191 @@
+% ============================================================
+%  FusionDet — IEEE Double-Column Conference Article
+%  Main entry point.  Compile with:
+%      pdflatex main.tex
+%      pdflatex main.tex   (second pass for cross-references)
+%  Or upload the entire latex/ folder to Overleaf.
+% ============================================================
+\documentclass[conference]{IEEEtran}
+
+% ----- Core packages ----------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{mathtools}          % \coloneqq, etc.
+\usepackage{bm}                 % bold math symbols
+\usepackage{graphicx}
+\usepackage{booktabs}           % professional table rules
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{cite}               % compressed, sorted citations
+
+% ----- TikZ (diagrams) --------------------------------------
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning,
+                fit, backgrounds, calc, decorations.pathreplacing}
+
+% ----- Algorithm listings -----------------------------------
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% ----- Micro-typography tweaks ------------------------------
+\usepackage{microtype}
+
+% ============================================================
+%  DOCUMENT
+% ============================================================
+\begin{document}
+
+% ------------------------------------------------------------
+%  PAGE 1 — Title, authors, abstract, keywords
+% ------------------------------------------------------------
+\input{pages/page01}
+
+% ------------------------------------------------------------
+%  PAGE 2 — Introduction
+% ------------------------------------------------------------
+\input{pages/page02}
+
+% ------------------------------------------------------------
+%  PAGE 3 — Literature Review
+% ------------------------------------------------------------
+\input{pages/page03}
+
+% ------------------------------------------------------------
+%  PAGE 4 — Problem Formulation & Proposed Architecture
+% ------------------------------------------------------------
+\input{pages/page04}
+
+% ------------------------------------------------------------
+%  PAGE 5 — Module 1: Advanced Feature Extraction Backbone
+% ------------------------------------------------------------
+\input{pages/page05}
+
+% ------------------------------------------------------------
+%  PAGE 6 — Module 2: Feature Fusion & Attention Mechanisms
+% ------------------------------------------------------------
+\input{pages/page06}
+
+% ------------------------------------------------------------
+%  PAGE 7 — Module 3: Detection Head & Optimized Loss Functions
+% ------------------------------------------------------------
+\input{pages/page07}
+
+% ============================================================
+%  BIBLIOGRAPHY
+%  All \bibitem entries from all pages are collected here.
+% ============================================================
+\begin{thebibliography}{99}
+
+%% ---- Page 1 / general ----
+\bibitem{lin2017feature}
+T.-Y. Lin, P.~Doll\'{a}r, R.~Girshick, K.~He, B.~Hariharan, and
+S.~Belongie, ``Feature pyramid networks for object detection,'' in
+\textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit.\ (CVPR)},
+2017, pp.~2117--2125.
+
+\bibitem{ren2015faster}
+S.~Ren, K.~He, R.~Girshick, and J.~Sun, ``Faster R-CNN: Towards
+real-time object detection with region proposal networks,''
+\textit{Adv. Neural Inf. Process. Syst.\ (NeurIPS)}, vol.~28, 2015.
+
+\bibitem{redmon2016yolo}
+J.~Redmon, S.~Divvala, R.~Girshick, and A.~Farhadi, ``You only look
+once: Unified, real-time object detection,'' in
+\textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit.\ (CVPR)},
+2016, pp.~779--788.
+
+\bibitem{dosovitskiy2021vit}
+A.~Dosovitskiy \textit{et al.}, ``An image is worth 16$\times$16
+words: Transformers for image recognition at scale,'' in
+\textit{Proc. Int. Conf. Learn. Represent.\ (ICLR)}, 2021.
+
+\bibitem{vaswani2017attention}
+A.~Vaswani \textit{et al.}, ``Attention is all you need,''
+\textit{Adv. Neural Inf. Process. Syst.\ (NeurIPS)}, vol.~30, 2017.
+
+\bibitem{carion2020detr}
+N.~Carion, F.~Massa, G.~Synnaeve, N.~Usunier, A.~Kirillov, and
+S.~Zagoruyko, ``End-to-end object detection with transformers,'' in
+\textit{Proc. Eur. Conf. Comput. Vis.\ (ECCV)}, 2020,
+pp.~213--229.
+
+\bibitem{liu2021swin}
+Z.~Liu \textit{et al.}, ``Swin Transformer: Hierarchical vision
+transformer using shifted windows,'' in \textit{Proc. IEEE Int.
+Conf. Comput. Vis.\ (ICCV)}, 2021, pp.~10012--10022.
+
+\bibitem{ge2021yolox}
+Z.~Ge, S.~Liu, F.~Wang, Z.~Li, and J.~Sun, ``YOLOX: Exceeding YOLO
+series detectors,'' \textit{arXiv preprint arXiv:2107.08430}, 2021.
+
+\bibitem{bochkovskiy2020yolov4}
+A.~Bochkovskiy, C.-Y. Wang, and H.-Y.\,M. Liao, ``YOLOv4: Optimal
+speed and accuracy of object detection,'' \textit{arXiv preprint
+arXiv:2004.10934}, 2020.
+
+\bibitem{lin2017focal}
+T.-Y. Lin, P.~Goyal, R.~Girshick, K.~He, and P.~Doll\'{a}r,
+``Focal loss for dense object detection,'' in \textit{Proc. IEEE
+Int. Conf. Comput. Vis.\ (ICCV)}, 2017, pp.~2980--2988.
+
+\bibitem{howard2017mobilenets}
+A.~G. Howard \textit{et al.}, ``MobileNets: Efficient convolutional
+neural networks for mobile vision applications,'' \textit{arXiv
+preprint arXiv:1704.04861}, 2017.
+
+\bibitem{katharopoulos2020transformers}
+A.~Katharopoulos, A.~Vyas, N.~Pappas, and F.~Fleuret, ``Transformers
+are RNNs: Fast autoregressive transformers with linear attention,'' in
+\textit{Proc. Int. Conf. Mach. Learn.\ (ICML)}, 2020,
+pp.~5156--5165.
+
+%% ---- Page 5 ----
+\bibitem{wang2020cspnet}
+C.-Y. Wang, H.-Y.\,M. Liao, Y.-H. Wu, P.-Y. Chen, J.-W. Hsieh, and
+I.-H. Yeh, ``CSPNet: A new backbone that can enhance learning
+capability of CNN,'' in \textit{Proc. IEEE Conf. Comput. Vis.
+Pattern Recognit. Workshops (CVPRW)}, 2020, pp.~390--391.
+
+\bibitem{ramachandran2018searching}
+P.~Ramachandran, B.~Zoph, and Q.~V. Le, ``Searching for activation
+functions,'' \textit{arXiv preprint arXiv:1710.05941}, 2018.
+
+\bibitem{misra2020mish}
+D.~Misra, ``Mish: A self regularized non-monotonic activation
+function,'' \textit{arXiv preprint arXiv:1908.08681}, 2020.
+
+\bibitem{woo2018cbam}
+S.~Woo, J.~Park, J.-Y. Lee, and I.~S. Kweon, ``CBAM: Convolutional
+block attention module,'' in \textit{Proc. Eur. Conf. Comput. Vis.\
+(ECCV)}, 2018, pp.~3--19.
+
+%% ---- Page 6 ----
+\bibitem{liu2018path}
+S.~Liu, L.~Qi, H.~Qin, J.~Shi, and J.~Jia, ``Path aggregation
+network for instance segmentation,'' in \textit{Proc. IEEE Conf.
+Comput. Vis. Pattern Recognit.\ (CVPR)}, 2018, pp.~8759--8768.
+
+%% ---- Page 7 ----
+\bibitem{zheng2020ciou}
+Z.~Zheng, P.~Wang, W.~Liu, J.~Li, R.~Ye, and D.~Ren, ``Distance-IoU
+loss: Faster and better learning for bounding box regression,'' in
+\textit{Proc. AAAI Conf. Artif. Intell.}, 2020,
+pp.~12993--13000.
+
+\bibitem{rezatofighi2019giou}
+H.~Rezatofighi, N.~Tsoi, J.~Gwak, A.~Sadeghian, I.~Reid, and
+S.~Savarese, ``Generalized intersection over union: A metric and a
+loss for bounding box regression,'' in \textit{Proc. IEEE Conf.
+Comput. Vis. Pattern Recognit.\ (CVPR)}, 2019, pp.~658--666.
+
+\bibitem{law2018cornernet}
+H.~Law and J.~Deng, ``CornerNet: Detecting objects as paired
+keypoints,'' in \textit{Proc. Eur. Conf. Comput. Vis.\ (ECCV)},
+2018, pp.~734--750.
+
+\end{thebibliography}
+
+\end{document}

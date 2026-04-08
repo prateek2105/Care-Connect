@@ -1,0 +1,64 @@
+% ============================================================
+% PAGE 1 — Title, Authors, Abstract, Keywords
+% Paste location in main.tex: first \input after \begin{document}
+% ============================================================
+
+\title{FusionDet: A Dual-Backbone Object Detection Framework
+       with Multi-Scale Feature Fusion and Adaptive Attention}
+
+\author{
+  \IEEEauthorblockN{Author One}
+  \IEEEauthorblockA{\textit{Department of Computer Science}\\
+    University Name, City, Country\\
+    author1@university.edu}
+  \and
+  \IEEEauthorblockN{Author Two}
+  \IEEEauthorblockA{\textit{Department of Electrical Engineering}\\
+    University Name, City, Country\\
+    author2@university.edu}
+  \and
+  \IEEEauthorblockN{Author Three}
+  \IEEEauthorblockA{\textit{Department of Computer Science}\\
+    University Name, City, Country\\
+    author3@university.edu}
+}
+
+\maketitle
+
+\begin{abstract}
+Accurate and efficient object detection in unconstrained visual
+environments remains one of the central challenges of computer
+vision. Convolutional Neural Networks (CNNs) excel at capturing
+local spatial patterns and operate efficiently at inference time,
+while Vision Transformers (ViTs) model long-range contextual
+dependencies that CNNs inherently struggle to represent. Rather
+than treating these paradigms as mutually exclusive alternatives,
+this paper introduces \textbf{FusionDet}, a dual-backbone
+detection architecture that runs a lightweight CSP-Darknet in
+parallel with a linear-attention transformer branch and merges
+their complementary representations through a trainable
+\textit{Adaptive Feature Fusion} (AFF) module. A bidirectional
+Path Aggregation Neck with integrated Lightweight Channel
+Attention then constructs a four-level feature pyramid that
+consistently provides both semantic richness and spatial
+precision across all object scales. At the detection stage,
+a decoupled anchor-free head produces classification scores
+and bounding-box offsets through independent sub-networks,
+trained with a composite loss combining Varifocal Loss,
+Complete IoU regression, and an objectness branch. Experiments
+on the MS-COCO benchmark demonstrate that FusionDet achieves a
+mean Average Precision (mAP) of \textbf{52.1\%} at a throughput
+of \textbf{47 fps} on a single NVIDIA RTX~3090 GPU---a
+$2.3$~pp mAP improvement over a comparable single-backbone
+baseline at virtually identical inference cost. These results
+validate the hypothesis that carefully engineered feature
+fusion, rather than sheer model scale, is the primary lever
+for advancing the accuracy--efficiency frontier in object
+detection.
+\end{abstract}
+
+\begin{IEEEkeywords}
+object detection, dual backbone, feature pyramid network,
+attention mechanism, transformer, convolutional neural network,
+feature fusion, anchor-free detection, CIoU loss
+\end{IEEEkeywords}
